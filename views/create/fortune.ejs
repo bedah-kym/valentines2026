@@ -1,0 +1,129 @@
+<%- include('../partials/header', { title: 'Fortune Cookie 🥠 - Be My Valentine' }) %>
+
+  <div class="create-page fortune-theme">
+    <!-- (rest of the file content unchanged, just removing the wrapper) -->
+    <header class="create-header">
+      <a href="/" class="back-link">← Back</a>
+      <h1>🥠 Fortune Cookie</h1>
+      <p>Write sweet messages hidden in fortune cookies</p>
+    </header>
+
+    <form id="fortuneForm" class="create-form">
+      <input type="hidden" name="persona" value="fortune">
+
+      <div class="form-group">
+        <label for="sender_name">Your Name</label>
+        <input type="text" id="sender_name" name="sender_name" required placeholder="Who's this from?">
+      </div>
+
+      <div class="form-group">
+        <label for="recipient_name">Their Name</label>
+        <input type="text" id="recipient_name" name="recipient_name" required placeholder="Who's this for?">
+      </div>
+
+      <div class="messages-section">
+        <h3>📝 Your Fortunes</h3>
+        <p class="helper-text">Write 5-8 sweet messages. Save the best for last!</p>
+
+        <div id="messagesContainer">
+          <div class="message-input">
+            <span class="message-number">1</span>
+            <input type="text" name="messages[]" required placeholder="Your smile lights up my day...">
+          </div>
+          <div class="message-input">
+            <span class="message-number">2</span>
+            <input type="text" name="messages[]" required placeholder="I love how you...">
+          </div>
+          <div class="message-input">
+            <span class="message-number">3</span>
+            <input type="text" name="messages[]" required placeholder="My favorite memory with you...">
+          </div>
+          <div class="message-input">
+            <span class="message-number">4</span>
+            <input type="text" name="messages[]" required placeholder="You make me feel...">
+          </div>
+          <div class="message-input">
+            <span class="message-number">5</span>
+            <input type="text" name="messages[]" required placeholder="Together we are...">
+          </div>
+        </div>
+
+        <button type="button" id="addMessage" class="btn btn-secondary">+ Add Another Fortune</button>
+      </div>
+
+      <!-- Gift Section -->
+      <%- include('../partials/gift-reveal') %>
+
+        <div class="form-group proposal-section">
+          <label for="finalProposal">🥠 The Golden Cookie (Your Proposal)</label>
+          <input type="text" id="finalProposal" name="finalProposal" required placeholder="Will you be my Valentine?"
+            value="Will you be my Valentine?">
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-large">Create My Fortune Cookies 🥠</button>
+    </form>
+  </div>
+
+  <script>
+    let messageCount = 5;
+    const maxMessages = 8;
+
+    document.getElementById('addMessage').addEventListener('click', function () {
+      if (messageCount >= maxMessages) {
+        alert('Maximum 8 fortunes allowed!');
+        return;
+      }
+      messageCount++;
+      const container = document.getElementById('messagesContainer');
+      const div = document.createElement('div');
+      div.className = 'message-input';
+      div.innerHTML = `
+      <span class="message-number">${messageCount}</span>
+      <input type="text" name="messages[]" placeholder="Another sweet message...">
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove(); messageCount--;">×</button>
+    `;
+      container.appendChild(div);
+    });
+
+    document.getElementById('fortuneForm').addEventListener('submit', async function (e) {
+      e.preventDefault();
+
+      const formData = new FormData(this);
+      const messages = formData.getAll('messages[]').filter(m => m.trim());
+
+      if (messages.length < 3) {
+        alert('Please write at least 3 fortunes!');
+        return;
+      }
+
+      const data = {
+        persona: 'fortune',
+        sender_name: formData.get('sender_name'),
+        recipient_name: formData.get('recipient_name'),
+        content: JSON.stringify({
+          messages: messages,
+          finalProposal: formData.get('finalProposal'),
+          gift: getGiftData()
+        })
+      };
+
+      try {
+        const res = await fetch('/api/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+        if (result.success) {
+          window.location.href = result.statusUrl;
+        } else {
+          alert(result.error || 'Something went wrong');
+        }
+      } catch (err) {
+        alert('Failed to create. Please try again.');
+      }
+    });
+  </script>
+
+  <%- include('../partials/footer') %>

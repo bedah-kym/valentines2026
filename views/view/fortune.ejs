@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A Fortune Cookie for <%= proposal.recipient_name %> 🥠</title>
+    <meta property="og:title" content="Someone has a sweet message for you! 🥠">
+    <meta property="og:description" content="Open your fortune cookies to discover a special message.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="view-page fortune-view">
+    <div class="fortune-scene">
+        <div class="table-cloth"></div>
+
+        <header class="view-header">
+            <p class="from-text">A message for <strong>
+                    <%= proposal.recipient_name %>
+                </strong></p>
+            <p class="instruction">Click each cookie to reveal your fortune 🥠</p>
+        </header>
+
+        <div class="cookies-container" id="cookiesContainer">
+            <% content.messages.forEach((msg, i)=> { %>
+                <div class="cookie" data-index="<%= i %>" onclick="crackCookie(this)">
+                    <div class="cookie-shell">🥠</div>
+                    <div class="fortune-paper" data-message="<%= msg %>"></div>
+                </div>
+                <% }) %>
+
+                    <!-- Golden Cookie (Final Proposal) -->
+                    <div class="cookie golden-cookie locked" data-index="final" onclick="crackCookie(this)">
+                        <div class="cookie-shell">🥠</div>
+                        <div class="fortune-paper" data-message="<%= content.finalProposal %>"></div>
+                        <div class="lock-overlay">
+                            <span>🔒</span>
+                            <p>Open all cookies first!</p>
+                        </div>
+                    </div>
+        </div>
+
+        <!-- Fortune Display -->
+        <div class="fortune-display hidden" id="fortuneDisplay">
+            <div class="fortune-card">
+                <p class="fortune-text" id="fortuneText"></p>
+                <button class="btn btn-secondary" onclick="closeFortune()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Final Proposal -->
+        <div class="proposal-overlay hidden" id="proposalOverlay">
+            <div class="confetti-container" id="confetti"></div>
+            <div class="proposal-card">
+                <p class="from-label">From <%= proposal.sender_name %>
+                </p>
+                <h1 class="proposal-text">
+                    <%= content.finalProposal %>
+                </h1>
+                <div class="response-buttons">
+                    <button class="btn btn-accept" onclick="respond('accepted')">💕 Yes!</button>
+                    <button class="btn btn-reject" onclick="respond('rejected')">💔 Not this time</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gift Display -->
+    <%- include('../partials/gift-display') %>
+
+        <script>
+            // ... existing script ...
+        </script>
+        const totalCookies = <%= content.messages.length %>;
+            let crackedCount = 0;
+            const proposalId = '<%= proposal.unique_id %>';
+
+                function crackCookie(el) {
+                if (el.classList.contains('cracked')) return;
+                if (el.classList.contains('locked')) {
+                el.classList.add('shake');
+                setTimeout(() => el.classList.remove('shake'), 500);
+                return;
+                }
+
+                el.classList.add('cracking');
+                setTimeout(() => {
+                el.classList.remove('cracking');
+                el.classList.add('cracked');
+
+                const message = el.querySelector('.fortune-paper').dataset.message;
+
+                if (el.dataset.index === 'final') {
+                // Show proposal
+                document.getElementById('proposalOverlay').classList.remove('hidden');
+                createConfetti();
+                } else {
+                crackedCount++;
+                showFortune(message);
+
+                // Unlock golden cookie when all regular cookies cracked
+                if (crackedCount === totalCookies) {
+                document.querySelector('.golden-cookie').classList.remove('locked');
+                }
+                }
+                }, 300);
+                }
+
+                function showFortune(message) {
+                document.getElementById('fortuneText').textContent = message;
+                document.getElementById('fortuneDisplay').classList.remove('hidden');
+                }
+
+                function closeFortune() {
+                document.getElementById('fortuneDisplay').classList.add('hidden');
+                }
+
+                function createConfetti() {
+                const container = document.getElementById('confetti');
+                const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6'];
+                for (let i = 0; i < 100; i++) { const confetti=document.createElement('div');
+                    confetti.className='confetti-piece' ; confetti.style.left=Math.random() * 100 + 'vw' ;
+                    confetti.style.backgroundColor=colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDelay=Math.random() * 2 + 's' ;
+                    confetti.style.animationDuration=(Math.random() * 2 + 2) + 's' ; container.appendChild(confetti); }
+                    } async function respond(status) { try { await fetch('/api/respond/' + proposalId, { method: 'POST'
+                    , headers: { 'Content-Type' : 'application/json' }, body: JSON.stringify({ status }) }); const
+                    overlay=document.getElementById('proposalOverlay');
+                    overlay.innerHTML='<div class="response-confirmation">' + (status==='accepted'
+                    ? '<h1>💕</h1><p>Your response has been sent!</p>' : '<h1>💔</h1><p>Maybe next time...</p>' )
+                    + '</div>' ; } catch (err) { alert('Failed to send response'); } } </script>
+</body>
+
+</html>

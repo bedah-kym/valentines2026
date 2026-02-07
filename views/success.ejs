@@ -1,0 +1,40 @@
+<%- include('layout', { body: ` <div class="success-page">
+    <div class="success-content">
+        <div class="success-icon">${proposal.status === 'accepted' ? '💕' : proposal.status === 'rejected' ? '💔' :
+            '💌'}</div>
+        <h1>${proposal.status === 'accepted' ? 'They said YES!' : proposal.status === 'rejected' ? 'Maybe next time...'
+            : 'Waiting for a response...'}</h1>
+
+        <div class="proposal-details">
+            <p><strong>To:</strong> ${proposal.recipient_name}</p>
+            <p><strong>From:</strong> ${proposal.sender_name}</p>
+            <p><strong>Status:</strong> <span class="status status-${proposal.status}">${proposal.status}</span></p>
+        </div>
+
+        <div class="share-section">
+            <p>Share this link with your Valentine:</p>
+            <div class="share-link">
+                <input type="text"
+                    value="${typeof window !== 'undefined' ? window.location.origin : ''}/v/${proposal.unique_id}"
+                    readonly id="shareUrl">
+                <button onclick="copyLink()" class="btn btn-secondary">Copy</button>
+            </div>
+        </div>
+
+        <a href="/" class="btn btn-primary">Create Another</a>
+    </div>
+    </div>
+
+    <script>
+        // Fix the URL on client side
+        document.getElementById('shareUrl').value = window.location.origin + '/v/${proposal.unique_id}';
+
+        function copyLink() {
+            const input = document.getElementById('shareUrl');
+            input.select();
+            document.execCommand('copy');
+            event.target.textContent = 'Copied!';
+            setTimeout(() => event.target.textContent = 'Copy', 2000);
+        }
+    </script>
+    ` }) %>

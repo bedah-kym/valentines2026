@@ -1,0 +1,121 @@
+<% if (content.gift) { %>
+    <div class="gift-reveal hidden" id="giftReveal">
+        <% if (content.gift.type==='surprise' ) { %>
+            <h2>🎁 Surprise!</h2>
+            <div class="proposal-text" style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <%= content.gift.title %>
+            </div>
+            <% if (content.gift.description) { %>
+                <p class="instruction">
+                    <%= content.gift.description %>
+                </p>
+                <% } %>
+
+                    <% if (content.gift.images && content.gift.images.length> 0) { %>
+                        <div class="gift-images">
+                            <% content.gift.images.forEach(url=> { %>
+                                <img src="<%= url %>" alt="Gift image">
+                                <% }) %>
+                        </div>
+                        <% } %>
+
+                            <% } else if (content.gift.type==='date' ) { %>
+                                <h2>📅 Date Night Plans</h2>
+
+                                <div class="date-details">
+                                    <% if (content.gift.venue) { %>
+                                        <div class="date-detail-row">
+                                            <span class="icon">📍</span>
+                                            <div>
+                                                <div class="label">Venue</div>
+                                                <div class="value">
+                                                    <%= content.gift.venue %>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <% } %>
+
+                                            <% if (content.gift.dateTime) { %>
+                                                <div class="date-detail-row">
+                                                    <span class="icon">🕐</span>
+                                                    <div>
+                                                        <div class="label">When</div>
+                                                        <div class="value">
+                                                            <%= new Date(content.gift.dateTime).toLocaleString() %>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <% } %>
+
+                                                    <% if (content.gift.dressCode) { %>
+                                                        <div class="date-detail-row">
+                                                            <span class="icon">👗</span>
+                                                            <div>
+                                                                <div class="label">Dress Code</div>
+                                                                <div class="value">
+                                                                    <%= content.gift.dressCode %>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <% } %>
+
+                                                            <% if (content.gift.notes) { %>
+                                                                <div class="date-detail-row">
+                                                                    <span class="icon">💭</span>
+                                                                    <div>
+                                                                        <div class="label">Note</div>
+                                                                        <div class="value">
+                                                                            <%= content.gift.notes %>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <% } %>
+                                </div>
+
+                                <% if (content.gift.images && content.gift.images.length> 0) { %>
+                                    <div class="gift-images">
+                                        <% content.gift.images.forEach(url=> { %>
+                                            <img src="<%= url %>" alt="Venue image">
+                                            <% }) %>
+                                    </div>
+                                    <% } %>
+                                        <% } %>
+
+                                            <button class="btn btn-primary" onclick="closeGiftReveal()"
+                                                style="margin-top: 1.5rem; width: 100%;">Okay, I love it! ❤️</button>
+    </div>
+
+    <script>
+        function showGiftReveal() {
+            const giftReveal = document.getElementById('giftReveal');
+            if (giftReveal) {
+                giftReveal.classList.remove('hidden');
+                // Adding simplified overlay styling here to avoid complex CSS dependencies
+                giftReveal.style.position = 'fixed';
+                giftReveal.style.top = '50%';
+                giftReveal.style.left = '50%';
+                giftReveal.style.transform = 'translate(-50%, -50%)';
+                giftReveal.style.zIndex = '300';
+
+                // Add a backdrop
+                const backdrop = document.createElement('div');
+                backdrop.id = 'giftBackdrop';
+                backdrop.style.position = 'fixed';
+                backdrop.style.top = '0';
+                backdrop.style.left = '0';
+                backdrop.style.width = '100%';
+                backdrop.style.height = '100%';
+                backdrop.style.backgroundColor = 'rgba(0,0,0,0.8)';
+                backdrop.style.zIndex = '299';
+                document.body.appendChild(backdrop);
+            }
+        }
+
+        function closeGiftReveal() {
+            const giftReveal = document.getElementById('giftReveal');
+            const backdrop = document.getElementById('giftBackdrop');
+            if (giftReveal) giftReveal.classList.add('hidden');
+            if (backdrop) backdrop.remove();
+        }
+    </script>
+    <% } %>

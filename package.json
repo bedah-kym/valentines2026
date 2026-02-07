@@ -1,0 +1,26 @@
+{
+    "name": "valentines2026",
+    "version": "1.0.0",
+    "description": "Romantic proposal platform with interactive personas",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node --watch server.js"
+    },
+    "keywords": [
+        "valentine",
+        "proposal",
+        "love"
+    ],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.985.0",
+        "better-sqlite3": "^11.0.0",
+        "dotenv": "^16.4.0",
+        "ejs": "^3.1.10",
+        "express": "^4.21.0",
+        "multer": "^2.0.2",
+        "nanoid": "^5.0.0"
+    }
+}

@@ -1,0 +1,205 @@
+<!-- Gift/Date Reveal Section - Include in create forms -->
+<div class="gift-section" id="giftSection">
+    <h3>🎁 Add a Surprise Reveal (Optional)</h3>
+    <p class="helper-text">This will show after they say "Yes!"</p>
+
+    <div class="gift-type-selector">
+        <label class="gift-type-option">
+            <input type="radio" name="giftType" value="none" checked>
+            <span class="gift-type-icon">❌</span>
+            <span>No Surprise</span>
+        </label>
+        <label class="gift-type-option">
+            <input type="radio" name="giftType" value="surprise">
+            <span class="gift-type-icon">🎁</span>
+            <span>Gift/Surprise</span>
+        </label>
+        <label class="gift-type-option">
+            <input type="radio" name="giftType" value="date">
+            <span class="gift-type-icon">📅</span>
+            <span>Date Plans</span>
+        </label>
+    </div>
+
+    <!-- Surprise Gift Fields -->
+    <div class="gift-fields surprise-fields hidden">
+        <div class="form-group">
+            <label for="giftTitle">What's the surprise?</label>
+            <input type="text" id="giftTitle" name="giftTitle" placeholder="A special dinner, a gift, etc.">
+        </div>
+        <div class="form-group">
+            <label for="giftDescription">Description (optional)</label>
+            <textarea id="giftDescription" name="giftDescription" rows="3"
+                placeholder="Tell them what to expect..."></textarea>
+        </div>
+        <div class="form-group image-upload-group">
+            <label>Add Photos (optional)</label>
+            <div class="image-upload-area" id="imageUploadArea">
+                <div class="upload-placeholder">
+                    <span>📷</span>
+                    <p>Click to upload or drag images here</p>
+                    <p class="small">Max 3 images, 5MB each</p>
+                </div>
+                <input type="file" id="giftImages" name="giftImages" accept="image/*" multiple hidden>
+            </div>
+            <div class="image-preview" id="imagePreview"></div>
+        </div>
+    </div>
+
+    <!-- Date Plans Fields -->
+    <div class="gift-fields date-fields hidden">
+        <div class="form-row">
+            <div class="form-group">
+                <label for="dateVenue">📍 Venue/Location</label>
+                <input type="text" id="dateVenue" name="dateVenue" placeholder="Restaurant, park, surprise location...">
+            </div>
+            <div class="form-group">
+                <label for="dateTime">🕐 Date & Time</label>
+                <input type="datetime-local" id="dateTime" name="dateTime">
+            </div>
+        </div>
+        <div class="form-group">
+            <label for="dressCode">👗 Dress Code (optional)</label>
+            <input type="text" id="dressCode" name="dressCode" placeholder="Casual, formal, wear something blue...">
+        </div>
+        <div class="form-group">
+            <label for="dateNotes">💭 Extra Notes</label>
+            <textarea id="dateNotes" name="dateNotes" rows="2"
+                placeholder="Anything else they should know..."></textarea>
+        </div>
+        <div class="form-group image-upload-group">
+            <label>Venue Photos (optional)</label>
+            <div class="image-upload-area" id="dateImageUploadArea">
+                <div class="upload-placeholder">
+                    <span>📷</span>
+                    <p>Click to upload venue or outfit ideas</p>
+                    <p class="small">Max 3 images, 5MB each</p>
+                </div>
+                <input type="file" id="dateImages" name="dateImages" accept="image/*" multiple hidden>
+            </div>
+            <div class="image-preview" id="dateImagePreview"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Gift type toggle
+    document.querySelectorAll('input[name="giftType"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.querySelectorAll('.gift-fields').forEach(el => el.classList.add('hidden'));
+            if (this.value === 'surprise') {
+                document.querySelector('.surprise-fields').classList.remove('hidden');
+            } else if (this.value === 'date') {
+                document.querySelector('.date-fields').classList.remove('hidden');
+            }
+        });
+    });
+
+    // Image upload handling
+    let uploadedImageUrls = [];
+
+    function setupImageUpload(uploadAreaId, inputId, previewId) {
+        const area = document.getElementById(uploadAreaId);
+        const input = document.getElementById(inputId);
+        const preview = document.getElementById(previewId);
+
+        if (!area || !input) return;
+
+        area.addEventListener('click', () => input.click());
+
+        area.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            area.classList.add('dragover');
+        });
+
+        area.addEventListener('dragleave', () => {
+            area.classList.remove('dragover');
+        });
+
+        area.addEventListener('drop', (e) => {
+            e.preventDefault();
+            area.classList.remove('dragover');
+            if (e.dataTransfer.files) {
+                handleFiles(e.dataTransfer.files, preview);
+            }
+        });
+
+        input.addEventListener('change', (e) => {
+            if (e.target.files) {
+                handleFiles(e.target.files, preview);
+            }
+        });
+    }
+
+    async function handleFiles(files, previewContainer) {
+        const formData = new FormData();
+        for (const file of files) {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('File too large: ' + file.name);
+                continue;
+            }
+            formData.append('images', file);
+        }
+
+        try {
+            previewContainer.innerHTML = '<p class="uploading">Uploading...</p>';
+
+            const res = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                uploadedImageUrls = [...uploadedImageUrls, ...data.urls];
+                previewContainer.innerHTML = '';
+                uploadedImageUrls.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'preview-thumb';
+                    previewContainer.appendChild(img);
+                });
+            } else {
+                previewContainer.innerHTML = '<p class="error">' + (data.error || 'Upload failed') + '</p>';
+            }
+        } catch (err) {
+            previewContainer.innerHTML = '<p class="error">Upload failed. Image uploads may not be configured.</p>';
+        }
+    }
+
+    // Initialize upload areas
+    setupImageUpload('imageUploadArea', 'giftImages', 'imagePreview');
+    setupImageUpload('dateImageUploadArea', 'dateImages', 'dateImagePreview');
+
+    // Function to get gift data for form submission
+    function getGiftData() {
+        const giftType = document.querySelector('input[name="giftType"]:checked')?.value;
+
+        if (giftType === 'none' || !giftType) {
+            return null;
+        }
+
+        if (giftType === 'surprise') {
+            return {
+                type: 'surprise',
+                title: document.getElementById('giftTitle')?.value || '',
+                description: document.getElementById('giftDescription')?.value || '',
+                images: uploadedImageUrls
+            };
+        }
+
+        if (giftType === 'date') {
+            return {
+                type: 'date',
+                venue: document.getElementById('dateVenue')?.value || '',
+                dateTime: document.getElementById('dateTime')?.value || '',
+                dressCode: document.getElementById('dressCode')?.value || '',
+                notes: document.getElementById('dateNotes')?.value || '',
+                images: uploadedImageUrls
+            };
+        }
+
+        return null;
+    }
+</script>

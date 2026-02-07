@@ -1,0 +1,111 @@
+<%- include('../partials/header', { title: 'Vintage Love Letter 💌 - Be My Valentine' }) %>
+
+    <div class="create-page letter-theme">
+        <header class="create-header">
+            <a href="/" class="back-link">← Back</a>
+            <h1>💌 Vintage Love Letter</h1>
+            <p>Write a timeless letter sealed with love</p>
+        </header>
+
+        <form id="letterForm" class="create-form">
+            <input type="hidden" name="persona" value="letter">
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="sender_name">From</label>
+                    <input type="text" id="sender_name" name="sender_name" required placeholder="Your name">
+                </div>
+                <div class="form-group">
+                    <label for="recipient_name">To</label>
+                    <input type="text" id="recipient_name" name="recipient_name" required placeholder="Their name">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="letter">Your Letter</label>
+                <textarea id="letter" name="letter" required rows="10" placeholder="My dearest...
+
+Write from your heart. Tell them what they mean to you, share memories, express your feelings...
+
+I cannot imagine my days without your smile, your warmth, your gentle spirit..."></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Wax Seal Color</label>
+                    <div class="seal-options">
+                        <label class="seal-option">
+                            <input type="radio" name="sealColor" value="red" checked>
+                            <span class="seal-preview red">❤️</span>
+                            <span>Classic Red</span>
+                        </label>
+                        <label class="seal-option">
+                            <input type="radio" name="sealColor" value="gold">
+                            <span class="seal-preview gold">💛</span>
+                            <span>Royal Gold</span>
+                        </label>
+                        <label class="seal-option">
+                            <input type="radio" name="sealColor" value="navy">
+                            <span class="seal-preview navy">💙</span>
+                            <span>Navy Blue</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="signature">Closing & Signature</label>
+                <input type="text" id="signature" name="signature" required placeholder="Forever yours, [Your name]">
+            </div>
+
+            <!-- Gift Section -->
+            <%- include('../partials/gift-reveal') %>
+
+                <button type="submit" class="btn btn-primary btn-large">Seal My Letter 💌</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('letterForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            const letter = formData.get('letter').trim();
+            if (letter.length < 50) {
+                alert('Pour your heart out! Write at least a few sentences.');
+                return;
+            }
+
+            const data = {
+                persona: 'letter',
+                sender_name: formData.get('sender_name'),
+                recipient_name: formData.get('recipient_name'),
+                content: JSON.stringify({
+                    letter: letter,
+                    sealColor: formData.get('sealColor'),
+                    signature: formData.get('signature'),
+                    gift: getGiftData()
+                })
+            };
+
+            try {
+                const res = await fetch('/api/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+                if (result.success) {
+                    window.location.href = result.statusUrl;
+                } else {
+                    alert(result.error || 'Something went wrong');
+                }
+            } catch (err) {
+                alert('Failed to create. Please try again.');
+            }
+        });
+    </script>
+
+    <%- include('../partials/footer') %>
