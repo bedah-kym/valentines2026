@@ -16,6 +16,7 @@
 </head>
 
 <body class="view-page fortune-view">
+    <%- include('../partials/lock', { lockInfo, proposalId: proposal.unique_id }) %>
     <div class="fortune-scene">
         <div class="table-cloth"></div>
 
@@ -25,6 +26,8 @@
                 </strong></p>
             <p class="instruction">Click each cookie to reveal your fortune 🥠</p>
         </header>
+
+        <%- include('../partials/audio-note') %>
 
         <div class="cookies-container" id="cookiesContainer">
             <% content.messages.forEach((msg, i)=> { %>
@@ -62,78 +65,127 @@
                 <h1 class="proposal-text">
                     <%= content.finalProposal %>
                 </h1>
+                <div class="note-input-section">
+                    <textarea id="responseNote" class="note-textarea"
+                        placeholder="Send a little note back... (optional)"></textarea>
+                </div>
                 <div class="response-buttons">
                     <button class="btn btn-accept" onclick="respond('accepted')">💕 Yes!</button>
                     <button class="btn btn-reject" onclick="respond('rejected')">💔 Not this time</button>
                 </div>
             </div>
         </div>
+        <div class="acceptance-overlay hidden" id="acceptanceOverlay">
+            <div class="stroke-text">I choose you</div>
+            <div class="burst-hearts" id="burstHearts"></div>
+        </div>
     </div>
 
     <!-- Gift Display -->
-    <%- include('../partials/gift-display') %>
+<script>
+    const totalCookies = <%= content.messages.length %>;
+    let crackedCount = 0;
+    const proposalId = '<%= proposal.unique_id %>';
 
-        <script>
-            // ... existing script ...
-        </script>
-        const totalCookies = <%= content.messages.length %>;
-            let crackedCount = 0;
-            const proposalId = '<%= proposal.unique_id %>';
+    function crackCookie(el) {
+        if (el.classList.contains('cracked')) return;
+        if (el.classList.contains('locked')) {
+            el.classList.add('shake');
+            setTimeout(() => el.classList.remove('shake'), 500);
+            return;
+        }
 
-                function crackCookie(el) {
-                if (el.classList.contains('cracked')) return;
-                if (el.classList.contains('locked')) {
-                el.classList.add('shake');
-                setTimeout(() => el.classList.remove('shake'), 500);
-                return;
-                }
+        el.classList.add('cracking');
+        setTimeout(() => {
+            el.classList.remove('cracking');
+            el.classList.add('cracked');
 
-                el.classList.add('cracking');
-                setTimeout(() => {
-                el.classList.remove('cracking');
-                el.classList.add('cracked');
+            const message = el.querySelector('.fortune-paper').dataset.message;
 
-                const message = el.querySelector('.fortune-paper').dataset.message;
-
-                if (el.dataset.index === 'final') {
-                // Show proposal
+            if (el.dataset.index === 'final') {
                 document.getElementById('proposalOverlay').classList.remove('hidden');
                 createConfetti();
-                } else {
+            } else {
                 crackedCount++;
                 showFortune(message);
 
-                // Unlock golden cookie when all regular cookies cracked
                 if (crackedCount === totalCookies) {
-                document.querySelector('.golden-cookie').classList.remove('locked');
+                    document.querySelector('.golden-cookie').classList.remove('locked');
                 }
-                }
-                }, 300);
-                }
+            }
+        }, 300);
+    }
 
-                function showFortune(message) {
-                document.getElementById('fortuneText').textContent = message;
-                document.getElementById('fortuneDisplay').classList.remove('hidden');
-                }
+    function showFortune(message) {
+        document.getElementById('fortuneText').textContent = message;
+        document.getElementById('fortuneDisplay').classList.remove('hidden');
+    }
 
-                function closeFortune() {
-                document.getElementById('fortuneDisplay').classList.add('hidden');
-                }
+    function closeFortune() {
+        document.getElementById('fortuneDisplay').classList.add('hidden');
+    }
 
-                function createConfetti() {
-                const container = document.getElementById('confetti');
-                const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6'];
-                for (let i = 0; i < 100; i++) { const confetti=document.createElement('div');
-                    confetti.className='confetti-piece' ; confetti.style.left=Math.random() * 100 + 'vw' ;
-                    confetti.style.backgroundColor=colors[Math.floor(Math.random() * colors.length)];
-                    confetti.style.animationDelay=Math.random() * 2 + 's' ;
-                    confetti.style.animationDuration=(Math.random() * 2 + 2) + 's' ; container.appendChild(confetti); }
-                    } async function respond(status) { try { await fetch('/api/respond/' + proposalId, { method: 'POST'
-                    , headers: { 'Content-Type' : 'application/json' }, body: JSON.stringify({ status }) }); const
-                    overlay=document.getElementById('proposalOverlay');
-                    overlay.innerHTML='<div class="response-confirmation">' + (status==='accepted'
-                    ? '<h1>💕</h1><p>Your response has been sent!</p>' : '<h1>💔</h1><p>Maybe next time...</p>' )
-                    + '</div>' ; } catch (err) { alert('Failed to send response'); } } </script>
+    function createConfetti() {
+        const container = document.getElementById('confetti');
+        const colors = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff6bd6'];
+        for (let i = 0; i < 100; i++) {
+            const confetti = document.createElement('div');
+            confetti.className = 'confetti-piece';
+            confetti.style.left = Math.random() * 100 + 'vw';
+            confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            confetti.style.animationDelay = Math.random() * 2 + 's';
+            confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+            container.appendChild(confetti);
+        }
+    }
+
+            function showAcceptanceOverlay() {
+                const overlay = document.getElementById('acceptanceOverlay');
+                const burst = document.getElementById('burstHearts');
+                if (!overlay || !burst) return;
+                burst.innerHTML = '';
+                for (let i = 0; i < 20; i++) {
+                    const heart = document.createElement('div');
+                    heart.className = 'burst-heart';
+                    heart.textContent = '❤';
+                    heart.style.left = Math.random() * 100 + '%';
+                    heart.style.animationDelay = Math.random() * 0.5 + 's';
+                    burst.appendChild(heart);
+                }
+                overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('hidden'), 2200);
+    }
+
+    async function respond(status) {
+        const note = document.getElementById('responseNote').value;
+        try {
+            await fetch('/api/respond/' + proposalId, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status, note })
+            });
+
+                const overlay = document.getElementById('proposalOverlay');
+                overlay.innerHTML = '<div class="response-confirmation">' +
+                    (status === 'accepted'
+                        ? '<h1>❤</h1><p>Your response has been sent!</p>'
+                        : '<h1>💔</h1><p>Maybe next time...</p>') +
+                    '</div>';
+
+            if (status === 'accepted') {
+                showAcceptanceOverlay();
+                setTimeout(() => {
+                    if (typeof showGiftReveal === 'function') {
+                        showGiftReveal();
+                    }
+                }, 3000);
+            }
+        } catch (err) {
+            alert('Failed to send response');
+        }
+    }
+</script>
+
 </body>
 
 </html>

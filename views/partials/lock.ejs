@@ -1,0 +1,86 @@
+<% if (lockInfo && lockInfo.locked) { %>
+<div class="lock-overlay" id="lockOverlay">
+    <div class="lock-card">
+        <div class="lock-icon">🔒</div>
+        <h2><%= lockInfo.reason === 'time' ? 'Time Capsule' : 'Secret Passphrase' %></h2>
+        <% if (lockInfo.reason === 'time' && lockInfo.unlockAt) { %>
+            <p class="helper-text">Opens at <strong><%= new Date(lockInfo.unlockAt).toLocaleString() %></strong></p>
+            <p class="helper-text" id="unlockCountdown">Counting down...</p>
+        <% } %>
+        <% if (lockInfo.passphraseRequired) { %>
+            <label for="unlockPassphrase">Enter the secret word</label>
+            <input type="password" id="unlockPassphrase" placeholder="Passphrase">
+        <% } %>
+        <button class="btn btn-primary" id="unlockBtn">Unlock</button>
+        <div class="helper-text error-text" id="unlockError"></div>
+    </div>
+</div>
+<script>
+    (function () {
+        const overlay = document.getElementById('lockOverlay');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const passInput = document.getElementById('unlockPassphrase');
+        const errorEl = document.getElementById('unlockError');
+        const countdownEl = document.getElementById('unlockCountdown');
+        const lockInfo = <%- JSON.stringify(lockInfo) %>;
+        const proposalId = '<%= proposalId %>';
+
+        function setError(msg) {
+            if (errorEl) errorEl.textContent = msg || '';
+        }
+
+        function hideOverlay() {
+            if (overlay) overlay.classList.add('hidden');
+            if (typeof window.onUnlocked === 'function') {
+                window.onUnlocked();
+            }
+        }
+
+        async function attemptUnlock() {
+            setError('');
+            const payload = {};
+            if (lockInfo.passphraseRequired) {
+                payload.passphrase = passInput ? passInput.value : '';
+            }
+            try {
+                const res = await fetch('/api/unlock/' + proposalId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (!data.success) {
+                    setError(data.error || 'Unlock failed');
+                    return;
+                }
+                hideOverlay();
+            } catch (err) {
+                setError('Network issue. Try again.');
+            }
+        }
+
+        unlockBtn?.addEventListener('click', attemptUnlock);
+
+        function tickCountdown() {
+            if (!countdownEl || !lockInfo.unlockAt) return;
+            const now = new Date();
+            const target = new Date(lockInfo.unlockAt);
+            const diff = target - now;
+            if (diff <= 0) {
+                countdownEl.textContent = 'Ready! Tap unlock.';
+                unlockBtn.disabled = false;
+                return;
+            }
+            unlockBtn.disabled = true;
+            const mins = Math.floor(diff / 60000);
+            const secs = Math.floor((diff % 60000) / 1000);
+            countdownEl.textContent = `${mins}m ${secs}s`;
+            requestAnimationFrame(tickCountdown);
+        }
+
+        if (lockInfo.reason === 'time' && lockInfo.unlockAt) {
+            tickCountdown();
+        }
+    })();
+</script>
+<% } %>

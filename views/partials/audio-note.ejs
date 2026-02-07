@@ -1,0 +1,12 @@
+<% if (content && content.premium && content.premium.audioNote) { %>
+<div class="audio-note">
+    <div class="audio-note-head">
+        <span class="audio-icon">🎧</span>
+        <div>
+            <div class="eyebrow">Candlelight audio note</div>
+            <p class="helper-text"><%= content.premium.audioNote.duration ? content.premium.audioNote.duration + 's' : '' %></p>
+        </div>
+    </div>
+    <audio controls src="<%= content.premium.audioNote.url %>"></audio>
+</div>
+<% } %>

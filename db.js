@@ -17,7 +17,10 @@ db.exec(`
     sender_name TEXT NOT NULL,
     recipient_name TEXT NOT NULL,
     content TEXT NOT NULL,
+    reveal_at DATETIME,
+    passphrase_hash TEXT,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
+    response_note TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     viewed_at DATETIME
   );
@@ -25,27 +28,51 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_unique_id ON proposals(unique_id);
 `);
 
+// Migration: Add response_note if it doesn't exist
+try {
+  const tableInfo = db.pragma('table_info(proposals)');
+  const hasNoteColumn = tableInfo.some(col => col.name === 'response_note');
+  if (!hasNoteColumn) {
+    db.exec('ALTER TABLE proposals ADD COLUMN response_note TEXT');
+    console.log('Migrated: Added response_note column');
+  }
+
+  const hasRevealAt = tableInfo.some(col => col.name === 'reveal_at');
+  if (!hasRevealAt) {
+    db.exec('ALTER TABLE proposals ADD COLUMN reveal_at DATETIME');
+    console.log('Migrated: Added reveal_at column');
+  }
+
+  const hasPassphrase = tableInfo.some(col => col.name === 'passphrase_hash');
+  if (!hasPassphrase) {
+    db.exec('ALTER TABLE proposals ADD COLUMN passphrase_hash TEXT');
+    console.log('Migrated: Added passphrase_hash column');
+  }
+} catch (err) {
+  console.error('Migration error:', err);
+}
+
 // Query helpers
 const queries = {
-    create: db.prepare(`
-    INSERT INTO proposals (unique_id, persona, sender_name, recipient_name, content)
-    VALUES (@unique_id, @persona, @sender_name, @recipient_name, @content)
+  create: db.prepare(`
+    INSERT INTO proposals (unique_id, persona, sender_name, recipient_name, content, reveal_at, passphrase_hash)
+    VALUES (@unique_id, @persona, @sender_name, @recipient_name, @content, @reveal_at, @passphrase_hash)
   `),
 
-    getByUniqueId: db.prepare(`
+  getByUniqueId: db.prepare(`
     SELECT * FROM proposals WHERE unique_id = ?
   `),
 
-    updateStatus: db.prepare(`
-    UPDATE proposals SET status = ?, viewed_at = CURRENT_TIMESTAMP WHERE unique_id = ?
+  updateStatus: db.prepare(`
+    UPDATE proposals SET status = ?, response_note = ?, viewed_at = CURRENT_TIMESTAMP WHERE unique_id = ?
   `),
 
-    markViewed: db.prepare(`
+  markViewed: db.prepare(`
     UPDATE proposals SET viewed_at = CURRENT_TIMESTAMP WHERE unique_id = ? AND viewed_at IS NULL
   `)
 };
 
 module.exports = {
-    db,
-    queries
+  db,
+  queries
 };

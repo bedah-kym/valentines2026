@@ -1,12 +1,32 @@
 <%- include('../partials/header', { title: 'Fortune Cookie 🥠 - Be My Valentine' }) %>
 
-  <div class="create-page fortune-theme">
+    <div class="create-page fortune-theme">
     <!-- (rest of the file content unchanged, just removing the wrapper) -->
     <header class="create-header">
       <a href="/" class="back-link">← Back</a>
       <h1>🥠 Fortune Cookie</h1>
       <p>Write sweet messages hidden in fortune cookies</p>
     </header>
+
+    <div class="info-card">
+      <strong>How their game works</strong>
+      <ul>
+        <li>They tap cookies one by one; your messages appear.</li>
+        <li>The golden cookie stays locked until all regular cookies are opened.</li>
+        <li>Final card shows your big ask; if they accept, the surprise/gift + audio reveal.</li>
+        <li>Time capsule / passphrase (if set) blocks the page until unlocked.</li>
+      </ul>
+    </div>
+
+    <div class="love-meter">
+      <div class="love-meter-top">
+        <span class="eyebrow">Love Meter</span>
+        <span class="love-meter-label" id="loveMeterLabel">Warming up...</span>
+      </div>
+      <div class="love-meter-bar">
+        <div class="love-meter-fill" id="loveMeterFill"></div>
+      </div>
+    </div>
 
     <form id="fortuneForm" class="create-form">
       <input type="hidden" name="persona" value="fortune">
@@ -54,6 +74,8 @@
       <!-- Gift Section -->
       <%- include('../partials/gift-reveal') %>
 
+      <%- include('../partials/premium') %>
+
         <div class="form-group proposal-section">
           <label for="finalProposal">🥠 The Golden Cookie (Your Proposal)</label>
           <input type="text" id="finalProposal" name="finalProposal" required placeholder="Will you be my Valentine?"
@@ -85,6 +107,26 @@
       container.appendChild(div);
     });
 
+    function initLoveMeter(formId) {
+      const fill = document.getElementById('loveMeterFill');
+      const label = document.getElementById('loveMeterLabel');
+      const form = document.getElementById(formId);
+      if (!form || !fill || !label) return;
+      const update = () => {
+        const fields = Array.from(form.querySelectorAll('input[type="text"], textarea, input[type="datetime-local"]'))
+          .filter(el => !el.disabled && el.type !== 'hidden');
+        const total = fields.length || 1;
+        const filled = fields.filter(el => (el.value || '').trim().length > 0).length;
+        const percent = Math.min(100, Math.round((filled / total) * 100));
+        fill.style.width = percent + '%';
+        label.textContent = percent >= 90 ? 'Overflowing with love' : percent >= 60 ? 'Heartwarming' : 'Warming up...';
+      };
+      form.addEventListener('input', update);
+      update();
+    }
+
+    initLoveMeter('fortuneForm');
+
     document.getElementById('fortuneForm').addEventListener('submit', async function (e) {
       e.preventDefault();
 
@@ -96,6 +138,9 @@
         return;
       }
 
+      const premium = window.getPremiumData ? window.getPremiumData() : null;
+      const premiumContent = premium && premium.audioNote ? { audioNote: premium.audioNote } : null;
+
       const data = {
         persona: 'fortune',
         sender_name: formData.get('sender_name'),
@@ -103,8 +148,11 @@
         content: JSON.stringify({
           messages: messages,
           finalProposal: formData.get('finalProposal'),
-          gift: getGiftData()
-        })
+          gift: getGiftData(),
+          premium: premiumContent
+        }),
+        reveal_at: premium?.revealAt || null,
+        passphrase: premium?.passphrase || ''
       };
 
       try {
@@ -116,8 +164,22 @@
 
         const result = await res.json();
         if (result.success) {
+          // Save to local history
+          const historyItem = {
+            unique_id: result.unique_id,
+            recipient_name: formData.get('recipient_name'),
+            sender_name: formData.get('sender_name'),
+            persona: 'fortune',
+            created_at: new Date().toISOString(),
+            status: 'pending'
+          };
+          const currentHistory = JSON.parse(localStorage.getItem('my_valentines') || '[]');
+          currentHistory.push(historyItem);
+          localStorage.setItem('my_valentines', JSON.stringify(currentHistory));
+
           window.location.href = result.statusUrl;
-        } else {
+        }
+        else {
           alert(result.error || 'Something went wrong');
         }
       } catch (err) {

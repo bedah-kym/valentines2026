@@ -7,6 +7,16 @@
             <p>Write a timeless letter sealed with love</p>
         </header>
 
+        <div class="love-meter">
+            <div class="love-meter-top">
+                <span class="eyebrow">Love Meter</span>
+                <span class="love-meter-label" id="loveMeterLabel">Warming up...</span>
+            </div>
+            <div class="love-meter-bar">
+                <div class="love-meter-fill" id="loveMeterFill"></div>
+            </div>
+        </div>
+
         <form id="letterForm" class="create-form">
             <input type="hidden" name="persona" value="letter">
 
@@ -61,11 +71,33 @@ I cannot imagine my days without your smile, your warmth, your gentle spirit..."
             <!-- Gift Section -->
             <%- include('../partials/gift-reveal') %>
 
+            <%- include('../partials/premium') %>
+
                 <button type="submit" class="btn btn-primary btn-large">Seal My Letter 💌</button>
         </form>
     </div>
 
     <script>
+        function initLoveMeter(formId) {
+            const fill = document.getElementById('loveMeterFill');
+            const label = document.getElementById('loveMeterLabel');
+            const form = document.getElementById(formId);
+            if (!form || !fill || !label) return;
+            const update = () => {
+                const fields = Array.from(form.querySelectorAll('input[type="text"], textarea, input[type="datetime-local"]'))
+                    .filter(el => !el.disabled && el.type !== 'hidden');
+                const total = fields.length || 1;
+                const filled = fields.filter(el => (el.value || '').trim().length > 0).length;
+                const percent = Math.min(100, Math.round((filled / total) * 100));
+                fill.style.width = percent + '%';
+                label.textContent = percent >= 90 ? 'Overflowing with love' : percent >= 60 ? 'Heartwarming' : 'Warming up...';
+            };
+            form.addEventListener('input', update);
+            update();
+        }
+
+        initLoveMeter('letterForm');
+
         document.getElementById('letterForm').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -77,6 +109,9 @@ I cannot imagine my days without your smile, your warmth, your gentle spirit..."
                 return;
             }
 
+            const premium = window.getPremiumData ? window.getPremiumData() : null;
+            const premiumContent = premium && premium.audioNote ? { audioNote: premium.audioNote } : null;
+
             const data = {
                 persona: 'letter',
                 sender_name: formData.get('sender_name'),
@@ -85,8 +120,11 @@ I cannot imagine my days without your smile, your warmth, your gentle spirit..."
                     letter: letter,
                     sealColor: formData.get('sealColor'),
                     signature: formData.get('signature'),
-                    gift: getGiftData()
-                })
+                    gift: getGiftData(),
+                    premium: premiumContent
+                }),
+                reveal_at: premium?.revealAt || null,
+                passphrase: premium?.passphrase || ''
             };
 
             try {
@@ -98,6 +136,19 @@ I cannot imagine my days without your smile, your warmth, your gentle spirit..."
 
                 const result = await res.json();
                 if (result.success) {
+                    // Save to local history
+                    const historyItem = {
+                        unique_id: result.unique_id,
+                        recipient_name: formData.get('recipient_name'),
+                        sender_name: formData.get('sender_name'),
+                        persona: 'letter',
+                        created_at: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    const currentHistory = JSON.parse(localStorage.getItem('my_valentines') || '[]');
+                    currentHistory.push(historyItem);
+                    localStorage.setItem('my_valentines', JSON.stringify(currentHistory));
+
                     window.location.href = result.statusUrl;
                 } else {
                     alert(result.error || 'Something went wrong');

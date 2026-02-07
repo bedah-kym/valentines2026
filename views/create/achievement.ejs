@@ -7,6 +7,26 @@
             <p>Create epic relationship achievements</p>
         </header>
 
+        <div class="info-card">
+            <strong>How their game works</strong>
+            <ul>
+                <li>They click anywhere to reveal achievements; each gives +100 XP.</li>
+                <li>After all unlocks, the Legendary screen shows your proposal.</li>
+                <li>If they accept, gift/date surprise + audio note reveal next.</li>
+                <li>Time capsule / passphrase (if set) blocks the page until unlocked.</li>
+            </ul>
+        </div>
+
+        <div class="love-meter">
+            <div class="love-meter-top">
+                <span class="eyebrow">Love Meter</span>
+                <span class="love-meter-label" id="loveMeterLabel">Warming up...</span>
+            </div>
+            <div class="love-meter-bar">
+                <div class="love-meter-fill" id="loveMeterFill"></div>
+            </div>
+        </div>
+
         <form id="achievementForm" class="create-form">
             <input type="hidden" name="persona" value="achievement">
 
@@ -76,6 +96,8 @@
             <!-- Gift Section -->
             <%- include('../partials/gift-reveal') %>
 
+            <%- include('../partials/premium') %>
+
                 <div class="form-group proposal-section">
                     <label for="finalProposal">🏆 LEGENDARY Achievement (Your Proposal)</label>
                     <input type="text" id="finalProposal" name="finalProposal" required
@@ -89,6 +111,26 @@
     <script>
         let achievementCount = 3; // Started with 3 examples
         const maxAchievements = 10;
+
+        function initLoveMeter(formId) {
+            const fill = document.getElementById('loveMeterFill');
+            const label = document.getElementById('loveMeterLabel');
+            const form = document.getElementById(formId);
+            if (!form || !fill || !label) return;
+            const update = () => {
+                const fields = Array.from(form.querySelectorAll('input[type="text"], textarea, input[type="datetime-local"]'))
+                    .filter(el => !el.disabled && el.type !== 'hidden');
+                const total = fields.length || 1;
+                const filled = fields.filter(el => (el.value || '').trim().length > 0).length;
+                const percent = Math.min(100, Math.round((filled / total) * 100));
+                fill.style.width = percent + '%';
+                label.textContent = percent >= 90 ? 'Overflowing with love' : percent >= 60 ? 'Heartwarming' : 'Warming up...';
+            };
+            form.addEventListener('input', update);
+            update();
+        }
+
+        initLoveMeter('achievementForm');
 
         // Update tier icon when dropdown changes
         document.addEventListener('change', function (e) {
@@ -145,6 +187,9 @@
                 return;
             }
 
+            const premium = window.getPremiumData ? window.getPremiumData() : null;
+            const premiumContent = premium && premium.audioNote ? { audioNote: premium.audioNote } : null;
+
             const data = {
                 persona: 'achievement',
                 sender_name: formData.get('sender_name'),
@@ -152,8 +197,11 @@
                 content: JSON.stringify({
                     achievements: achievements,
                     finalProposal: formData.get('finalProposal'),
-                    gift: getGiftData()
-                })
+                    gift: getGiftData(),
+                    premium: premiumContent
+                }),
+                reveal_at: premium?.revealAt || null,
+                passphrase: premium?.passphrase || ''
             };
 
             try {
@@ -165,8 +213,22 @@
 
                 const result = await res.json();
                 if (result.success) {
+                    // Save to local history
+                    const historyItem = {
+                        unique_id: result.unique_id,
+                        recipient_name: formData.get('recipient_name'),
+                        sender_name: formData.get('sender_name'),
+                        persona: 'achievement',
+                        created_at: new Date().toISOString(),
+                        status: 'pending'
+                    };
+                    const currentHistory = JSON.parse(localStorage.getItem('my_valentines') || '[]');
+                    currentHistory.push(historyItem);
+                    localStorage.setItem('my_valentines', JSON.stringify(currentHistory));
+
                     window.location.href = result.statusUrl;
-                } else {
+                }
+                else {
                     alert(result.error || 'Something went wrong');
                 }
             } catch (err) {

@@ -16,6 +16,7 @@
 </head>
 
 <body class="view-page letter-view">
+    <%- include('../partials/lock', { lockInfo, proposalId: proposal.unique_id }) %>
     <div class="letter-scene">
         <div class="desk-bg"></div>
 
@@ -44,8 +45,14 @@
                 </p>
             </div>
 
+            <%- include('../partials/audio-note') %>
+
             <div class="letter-response">
                 <p class="response-prompt">Will you be my Valentine?</p>
+                <div class="note-input-section">
+                    <textarea id="responseNote" class="note-textarea"
+                        placeholder="Write a little note back... (optional)"></textarea>
+                </div>
                 <div class="response-buttons">
                     <button class="btn btn-accept" onclick="respond('accepted')">💕 Yes, I Will</button>
                     <button class="btn btn-reject" onclick="respond('rejected')">💔 Not This Time</button>
@@ -57,6 +64,11 @@
         <div class="response-overlay hidden" id="responseOverlay">
             <div class="hearts-float"></div>
         </div>
+    </div>
+
+    <div class="acceptance-overlay hidden" id="acceptanceOverlay">
+        <div class="stroke-text">I choose you</div>
+        <div class="burst-hearts" id="burstHearts"></div>
     </div>
 
     <!-- Gift Display -->
@@ -112,47 +124,53 @@
                 type();
             }
 
-            async function respond(status) {
-                try {
-                    await fetch('/api/respond/' + proposalId, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status })
-                    });
-
-                    const overlay = document.getElementById('responseOverlay');
-                    overlay.classList.remove('hidden');
-
-                    if (status === 'accepted') {
-                        overlay.innerHTML = '<div class="hearts-float"></div><div class="response-confirmation"><h1>💕</h1><p>Your heart has spoken</p></div>';
-                        createFloatingHearts();
-
-                        // Show gift reveal if accepted
-                        setTimeout(() => {
-                            if (typeof showGiftReveal === 'function') {
-                                showGiftReveal();
-                            }
-                        }, 3000);
-                    } else {
-                        overlay.innerHTML = '<div class="response-confirmation"><h1>💔</h1><p>Perhaps another time...</p></div>';
-                    }
-                } catch (err) {
-                    alert('Failed to send response');
-                }
+            function showAcceptanceOverlay() {
+            const overlay = document.getElementById('acceptanceOverlay');
+            const burst = document.getElementById('burstHearts');
+            if (!overlay || !burst) return;
+            burst.innerHTML = '';
+            for (let i = 0; i < 20; i++) {
+                const heart = document.createElement('div');
+                heart.className = 'burst-heart';
+                heart.textContent = '❤';
+                heart.style.left = Math.random() * 100 + '%';
+                heart.style.animationDelay = Math.random() * 0.5 + 's';
+                burst.appendChild(heart);
             }
+            overlay.classList.remove('hidden');
+            setTimeout(() => overlay.classList.add('hidden'), 2200);
+        }
 
-            function createFloatingHearts() {
+        async function respond(status) {
+            const note = document.getElementById('responseNote').value;
+            try {
+                await fetch('/api/respond/' + proposalId, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status, note })
+                });
+
                 const overlay = document.getElementById('responseOverlay');
-                for (let i = 0; i < 20; i++) {
-                    const heart = document.createElement('div');
-                    heart.className = 'floating-heart';
-                    heart.textContent = '❤️';
-                    heart.style.left = Math.random() * 100 + 'vw';
-                    heart.style.animationDelay = Math.random() * 3 + 's';
-                    heart.style.animationDuration = (Math.random() * 3 + 4) + 's';
-                    overlay.appendChild(heart);
+                overlay.classList.remove('hidden');
+
+                if (status === 'accepted') {
+                    overlay.innerHTML = '<div class="hearts-float"></div><div class="response-confirmation"><h1>&#10084;</h1><p>Your heart has spoken</p></div>';
+                    showAcceptanceOverlay();
+                    createFloatingHearts();
+
+                    setTimeout(() => {
+                        if (typeof showGiftReveal === 'function') {
+                            showGiftReveal();
+                        }
+                    }, 3000);
+                } else {
+                    overlay.innerHTML = '<div class="response-confirmation"><h1>??</h1><p>Perhaps another time...</p></div>';
                 }
+            } catch (err) {
+                alert('Failed to send response');
             }
+        }
+
         </script>
 </body>
 

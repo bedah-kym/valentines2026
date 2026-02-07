@@ -1,37 +1,164 @@
-<%- include('layout', { body: `
-<div class="landing">
-  <div class="hearts-bg"></div>
-  
-  <header class="landing-header">
-    <h1 class="glow-text">Be My Valentine</h1>
-    <p class="tagline">Create a magical moment for someone special</p>
-  </header>
+<%- include('partials/header', { title: 'Valentine\' s Day 2026 💖' }) %>
 
-  <main class="persona-grid">
-    <a href="/create/fortune" class="persona-card fortune-card">
-      <div class="persona-icon">🥠</div>
-      <h2>Fortune Cookie</h2>
-      <p>Crack open sweet messages one by one</p>
-      <span class="persona-vibe">Playful & Sweet</span>
-    </a>
+  <div class="landing">
+    <div class="hearts-bg"></div>
 
-    <a href="/create/achievement" class="persona-card achievement-card">
-      <div class="persona-icon">🏆</div>
-      <h2>Achievement Unlocked</h2>
-      <p>Level up your love with epic unlocks</p>
-      <span class="persona-vibe">Fun & Gamified</span>
-    </a>
+    <button class="dashboard-btn" onclick="openDashboard()">
+      📑 My Proposals
+    </button>
 
-    <a href="/create/letter" class="persona-card letter-card">
-      <div class="persona-icon">💌</div>
-      <h2>Vintage Love Letter</h2>
-      <p>A timeless sealed letter from the heart</p>
-      <span class="persona-vibe">Elegant & Romantic</span>
-    </a>
-  </main>
+    <header class="landing-header">
+      <h1 class="glow-text">Be My Valentine</h1>
+      <p class="tagline">Create a magical moment for someone special</p>
+      <div class="premium-pill">✨ New: Time Capsule + Candlelight audio note</div>
+    </header>
 
-  <footer class="landing-footer">
-    <p>Made with 💝 for Valentine's Day 2026</p>
-  </footer>
-</div>
-` }) %>
+    <main class="persona-grid">
+      <a href="/create/fortune" class="persona-card fortune-card">
+        <div class="persona-icon">🥠</div>
+        <h2>Fortune Cookie</h2>
+        <p>Crack open sweet messages one by one</p>
+        <span class="persona-vibe">Playful & Sweet</span>
+      </a>
+
+      <a href="/create/achievement" class="persona-card achievement-card">
+        <div class="persona-icon">🏆</div>
+        <h2>Achievement Unlocked</h2>
+        <p>Level up your love with epic unlocks</p>
+        <span class="persona-vibe">Fun & Gamified</span>
+      </a>
+
+      <a href="/create/letter" class="persona-card letter-card">
+        <div class="persona-icon">💌</div>
+        <h2>Vintage Love Letter</h2>
+        <p>A timeless sealed letter from the heart</p>
+        <span class="persona-vibe">Elegant & Romantic</span>
+      </a>
+    </main>
+
+    <footer class="landing-footer">
+      <p>Made with 💝 for Valentine's Day 2026</p>
+    </footer>
+  </div>
+
+  <!-- Dashboard Modal -->
+  <div id="dashboardModal" class="dashboard-modal hidden">
+    <div class="dashboard-content">
+      <header class="dashboard-header">
+        <h2>My Sent Proposals 💌</h2>
+        <button class="close-dashboard" onclick="closeDashboard()">&times;</button>
+      </header>
+      <div class="proposals-list" id="proposalsList">
+        <div class="empty-state">
+          <p>You haven't sent any proposals yet.</p>
+          <p>Create one to verify your love! 🏹</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function getSavedProposals() {
+      const saved = localStorage.getItem('my_valentines');
+      return saved ? JSON.parse(saved) : [];
+    }
+
+    function openDashboard() {
+      const modal = document.getElementById('dashboardModal');
+      modal.classList.remove('hidden');
+      loadProposals();
+    }
+
+    function closeDashboard() {
+      document.getElementById('dashboardModal').classList.add('hidden');
+    }
+
+    async function loadProposals() {
+      const listContainer = document.getElementById('proposalsList');
+      const localProposals = getSavedProposals();
+
+      if (localProposals.length === 0) {
+        listContainer.innerHTML = `
+        <div class="empty-state">
+          <p>You haven't sent any proposals yet.</p>
+          <p>Create one to start tracking! 🏹</p>
+        </div>`;
+        return;
+      }
+
+      listContainer.innerHTML = '<div class="empty-state"><p>Loading status...</p></div>';
+
+      try {
+        // Extract IDs to fetch latest status
+        const ids = localProposals.map(p => p.unique_id);
+
+        const res = await fetch('/api/my-proposals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids })
+        });
+
+        const data = await res.json();
+
+        if (data.proposals && data.proposals.length > 0) {
+          renderProposals(data.proposals);
+        } else {
+          // Fallback if API fails to find them but localStorage has them
+          renderProposals(localProposals.map(p => ({ ...p, status: 'unknown' })));
+        }
+
+      } catch (err) {
+        console.error('Failed to load proposals', err);
+        renderProposals(localProposals.map(p => ({ ...p, status: 'error' })));
+      }
+    }
+
+    function renderProposals(proposals) {
+      const listContainer = document.getElementById('proposalsList');
+      listContainer.innerHTML = '';
+
+      // Sort by created_at desc (newest first)
+      proposals.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+      proposals.forEach(p => {
+        const statusClass = `status-${p.status || 'pending'}`;
+        const statusLabel = p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Pending';
+
+        let noteHtml = '';
+        if (p.response_note) {
+          noteHtml = `
+          <div class="response-note">
+            <strong>💌 Note from ${p.recipient_name}:</strong>
+            ${p.response_note.replace(/</g, '&lt;')}
+          </div>
+        `;
+        }
+
+        const lockHtml = p.reveal_at ? `<span class="lock-chip">🔒 Opens ${new Date(p.reveal_at).toLocaleDateString()}</span>` : '';
+
+        const item = document.createElement('div');
+        item.className = 'proposal-item';
+        item.innerHTML = `
+        <div class="proposal-header">
+          <span class="recipient-name">To: ${p.recipient_name}</span>
+          <span class="status ${statusClass}">${statusLabel}</span>
+        </div>
+        <div class="proposal-meta">
+          <span>📅 ${new Date(p.created_at).toLocaleDateString()}</span>
+          <span>📝 ${p.persona}</span>
+          ${lockHtml}
+        </div>
+        ${noteHtml}
+        <a href="/success/${p.unique_id}" class="view-btn">View Status Page →</a>
+      `;
+        listContainer.appendChild(item);
+      });
+    }
+
+    // Close on outside click
+    document.getElementById('dashboardModal').addEventListener('click', function (e) {
+      if (e.target === this) closeDashboard();
+    });
+  </script>
+
+  <%- include('partials/footer') %>

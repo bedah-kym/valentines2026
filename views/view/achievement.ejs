@@ -14,6 +14,7 @@
 </head>
 
 <body class="view-page achievement-view">
+    <%- include('../partials/lock', { lockInfo, proposalId: proposal.unique_id }) %>
     <!-- Boot Screen -->
     <div class="boot-screen" id="bootScreen">
         <div class="boot-content">
@@ -41,6 +42,8 @@
             <p class="game-instruction">Click anywhere to reveal achievements</p>
         </main>
 
+        <%- include('../partials/audio-note') %>
+
         <!-- Achievement Notification (appears one at a time) -->
         <div class="achievement-notification hidden" id="notification">
             <div class="notification-inner">
@@ -64,6 +67,10 @@
                 </h1>
                 <p class="from-player">From: <%= proposal.sender_name %>
                 </p>
+                <div class="note-input-section">
+                    <textarea id="responseNote" class="note-textarea"
+                        placeholder="Send a little note back... (optional)"></textarea>
+                </div>
                 <div class="response-buttons">
                     <button class="btn btn-accept" onclick="respond('accepted')">✓ ACCEPT QUEST</button>
                     <button class="btn btn-reject" onclick="respond('rejected')">✗ DECLINE</button>
@@ -72,32 +79,207 @@
         </div>
     </div>
 
+    <div class="acceptance-overlay hidden" id="acceptanceOverlay">
+        <div class="stroke-text">I choose you</div>
+        <div class="burst-hearts" id="burstHearts"></div>
+    </div>
+
     <!-- Gift Display -->
     <%- include('../partials/gift-display') %>
 
         <script>
-            const achievements = <% - JSON.stringify(content.achievements) %>;
-            // ... (keep existing variables) ...
+            const achievements = <%- JSON.stringify(content.achievements) %>;
             const proposalId = '<%= proposal.unique_id %>';
-            // ... (keep existing code) ...
+
+            const state = {
+                unlocked: 0,
+                total: achievements.length,
+                xp: 0,
+                isAnimating: false
+            };
+
+            // Sound System (Web Audio API) - 8-bit retro style
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+            function playSound(type) {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                const now = audioCtx.currentTime;
+
+                if (type === 'boot') {
+                    // Power up sound
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(110, now);
+                    osc.frequency.linearRampToValueAtTime(880, now + 0.5);
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.linearRampToValueAtTime(0, now + 0.5);
+                    osc.start(now);
+                    osc.stop(now + 0.5);
+                } else if (type === 'unlock') {
+                    // Coin sound
+                    osc.type = 'square';
+                    osc.frequency.setValueAtTime(987.77, now); // B5
+                    osc.frequency.setValueAtTime(1318.51, now + 0.1); // E6
+                    gainNode.gain.setValueAtTime(0.1, now);
+                    gainNode.gain.linearRampToValueAtTime(0, now + 0.3);
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'win') {
+                    // Victory Fanfare (Arpeggio)
+                    const createNote = (freq, time, dur) => {
+                        const o = audioCtx.createOscillator();
+                        const g = audioCtx.createGain();
+                        o.connect(g);
+                        g.connect(audioCtx.destination);
+                        o.type = 'square';
+                        o.frequency.value = freq;
+                        g.gain.setValueAtTime(0.1, time);
+                        g.gain.exponentialRampToValueAtTime(0.01, time + dur);
+                        o.start(time);
+                        o.stop(time + dur);
+                    };
+                    createNote(523.25, now, 0.2); // C5
+                    createNote(659.25, now + 0.2, 0.2); // E5
+                    createNote(783.99, now + 0.4, 0.2); // G5
+                    createNote(1046.50, now + 0.6, 0.6); // C6
+                }
+            }
+
+            // Boot Screen Interaction
+            document.getElementById('bootScreen').addEventListener('click', function () {
+                playSound('boot');
+                this.classList.add('fade-out');
+                setTimeout(() => {
+                    this.classList.add('hidden');
+                    document.getElementById('gameUI').classList.remove('hidden');
+                }, 500);
+            });
+
+            // Main Game Interaction
+            document.querySelector('.achievements-display').addEventListener('click', function () {
+                if (state.unlocked >= state.total || state.isAnimating) return;
+
+                // Unlock mechanics
+                state.isAnimating = true;
+                const achievement = achievements[state.unlocked];
+
+                // Animation sequence
+                state.unlocked++;
+                state.xp += 100;
+
+                updateUI();
+                showNotification(achievement);
+                playSound('unlock');
+
+                // Allow next click after delay
+                setTimeout(() => {
+                    state.isAnimating = false;
+
+                    // Check win condition
+                    if (state.unlocked === state.total) {
+                        setTimeout(triggerWinConfetti, 1000);
+                    }
+                }, 2500); // Wait for notification to persist a bit
+            });
+
+            function updateUI() {
+                const percent = (state.unlocked / state.total) * 100;
+                document.getElementById('xpFill').style.width = `${percent}%`;
+                document.getElementById('xpText').textContent = `${state.xp} / ${state.total * 100} XP`;
+            }
+
+            function showNotification(ach) {
+                const el = document.getElementById('notification');
+                const icons = { bronze: '🥉', silver: '🥈', gold: '🥇', platinum: '💎' };
+
+                document.getElementById('tierIcon').textContent = icons[ach.tier] || '🏆';
+                document.getElementById('tierIcon').className = `tier-icon ${ach.tier}`;
+                document.getElementById('achievementTitle').textContent = ach.title;
+                document.getElementById('achievementDesc').textContent = ach.desc;
+
+                el.classList.remove('hidden');
+                el.classList.remove('slide-out');
+                el.classList.add('slide-in');
+
+                setTimeout(() => {
+                    el.classList.remove('slide-in');
+                    el.classList.add('slide-out');
+                }, 2500);
+            }
+
+            function triggerWinConfetti() {
+                playSound('win');
+                document.getElementById('legendaryOverlay').classList.remove('hidden');
+
+                // Confetti effect
+                const container = document.getElementById('confetti');
+                const colors = ['#f00', '#0f0', '#00f', '#ff0', '#f0f'];
+                for (let i = 0; i < 50; i++) {
+                    const p = document.createElement('div');
+                    p.style.position = 'absolute';
+                    p.style.left = Math.random() * 100 + '%';
+                    p.style.top = -10 + 'px';
+                    p.style.width = '10px';
+                    p.style.height = '10px';
+                    p.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    p.style.animation = `fall ${Math.random() * 2 + 3}s linear infinite`;
+                    container.appendChild(p);
+                }
+
+                // Add keyframes for confetti if not exists
+                if (!document.getElementById('confetti-style')) {
+                    const style = document.createElement('style');
+                    style.id = 'confetti-style';
+                    style.textContent = `
+                    @keyframes fall {
+                        to { transform: translateY(100vh) rotate(720deg); }
+                    }
+                `;
+                    document.head.appendChild(style);
+                }
+            }
+
+            function showAcceptanceOverlay() {
+                const overlay = document.getElementById('acceptanceOverlay');
+                const burst = document.getElementById('burstHearts');
+                if (!overlay || !burst) return;
+                burst.innerHTML = '';
+                for (let i = 0; i < 20; i++) {
+                    const heart = document.createElement('div');
+                    heart.className = 'burst-heart';
+                    heart.textContent = '❤';
+                    heart.style.left = Math.random() * 100 + '%';
+                    heart.style.animationDelay = Math.random() * 0.5 + 's';
+                    burst.appendChild(heart);
+                }
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.add('hidden'), 2200);
+            }
 
             async function respond(status) {
+                const note = document.getElementById('responseNote').value;
                 try {
                     await fetch('/api/respond/' + proposalId, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ status })
+                        body: JSON.stringify({ status, note })
                     });
 
                     const overlay = document.getElementById('legendaryOverlay');
                     overlay.innerHTML = '<div class="response-confirmation">' +
                         (status === 'accepted'
-                            ? '<h1>🏆</h1><p>QUEST ACCEPTED!</p><p class="subtext">Achievement Unlocked: Valentine\'s Partner</p>'
-                            : '<h1>💔</h1><p>Quest Declined</p>') +
+                            ? '<h1>&#10084;</h1><p>QUEST ACCEPTED!</p><p class="subtext">Achievement Unlocked: Valentine's Partner</p>'
+                            : '<h1>&#128148;</h1><p>Quest Declined</p>') +
                         '</div>';
 
-                    // Show gift reveal if accepted
                     if (status === 'accepted') {
+                        showAcceptanceOverlay();
+                        playSound('win');
                         setTimeout(() => {
                             if (typeof showGiftReveal === 'function') {
                                 showGiftReveal();
@@ -108,6 +290,7 @@
                     alert('Failed to send response');
                 }
             }
+
         </script>
 </body>
 

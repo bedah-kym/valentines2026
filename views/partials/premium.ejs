@@ -1,0 +1,217 @@
+<div class="premium-section">
+    <div class="premium-heading">
+        <span class="spark-icon">✨</span>
+        <div>
+            <div class="eyebrow">Premium Spark</div>
+            <strong>Time Capsule & Audio Note</strong>
+            <p class="helper-text">Schedule the reveal, add a secret passphrase, and include a 30s candlelight voice note.</p>
+        </div>
+    </div>
+
+    <div class="premium-grid">
+        <div class="card-block">
+            <div class="toggle-row">
+                <label class="switch">
+                    <input type="checkbox" id="timeCapsuleToggle">
+                    <span class="slider"></span>
+                </label>
+                <div>
+                    <div class="block-title">Time Capsule Reveal</div>
+                    <p class="helper-text">Set the exact moment this unlocks.</p>
+                </div>
+            </div>
+
+            <div class="time-fields hidden" id="timeCapsuleFields">
+                <label for="revealAt">Unlock at</label>
+                <input type="datetime-local" id="revealAt">
+                <label for="passphrase">Passphrase (optional)</label>
+                <input type="text" id="passphrase" maxlength="60" placeholder="Shared secret word">
+                <p class="microcopy">We hash the passphrase and never store it in plain text.</p>
+            </div>
+        </div>
+
+        <div class="card-block">
+            <div class="block-title">Candlelight Audio Note</div>
+            <p class="helper-text">Record a 30s whisper. We’ll keep it tiny for fast delivery.</p>
+            <div class="audio-controls">
+                <button type="button" id="recordBtn" class="btn btn-secondary">Record</button>
+                <button type="button" id="stopBtn" class="btn btn-secondary" disabled>Stop</button>
+                <button type="button" id="clearAudio" class="btn btn-secondary" disabled>Clear</button>
+            </div>
+            <div id="audioStatus" class="helper-text"></div>
+            <div id="audioPreview"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const state = {
+            audioNote: null,
+            revealAt: null,
+            passphrase: ''
+        };
+
+        const toggle = document.getElementById('timeCapsuleToggle');
+        const fields = document.getElementById('timeCapsuleFields');
+        const revealAt = document.getElementById('revealAt');
+        const passphrase = document.getElementById('passphrase');
+        const recordBtn = document.getElementById('recordBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const clearBtn = document.getElementById('clearAudio');
+        const audioStatus = document.getElementById('audioStatus');
+        const audioPreview = document.getElementById('audioPreview');
+
+        let mediaRecorder = null;
+        let chunks = [];
+        let startedAt = null;
+        let stopTimer = null;
+
+        function setMinTime() {
+            if (!revealAt) return;
+            const now = new Date();
+            now.setMinutes(now.getMinutes() + 5);
+            const iso = now.toISOString().slice(0, 16);
+            revealAt.min = iso;
+            if (!revealAt.value) revealAt.value = iso;
+        }
+        setMinTime();
+
+        function updateState() {
+            state.revealAt = toggle?.checked ? (revealAt?.value || null) : null;
+            state.passphrase = toggle?.checked ? (passphrase?.value?.trim() || '') : '';
+        }
+
+        toggle?.addEventListener('change', () => {
+            fields?.classList.toggle('hidden', !toggle.checked);
+            if (!toggle.checked) {
+                revealAt.value = '';
+                passphrase.value = '';
+            } else {
+                setMinTime();
+            }
+            updateState();
+        });
+
+        [revealAt, passphrase].forEach(el => {
+            el?.addEventListener('input', updateState);
+        });
+
+        function resetRecorder() {
+            if (stopTimer) clearTimeout(stopTimer);
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            chunks = [];
+            mediaRecorder = null;
+            startedAt = null;
+            recordBtn.disabled = false;
+            stopBtn.disabled = true;
+        }
+
+        function setStatus(msg) {
+            if (audioStatus) audioStatus.textContent = msg || '';
+        }
+
+        async function startRecording() {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                setStatus('Recording not supported on this browser.');
+                return;
+            }
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                chunks = [];
+                startedAt = Date.now();
+                recordBtn.disabled = true;
+                stopBtn.disabled = false;
+                clearBtn.disabled = true;
+                setStatus('Recording... (auto-stops at 30s)');
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) chunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const duration = Math.round((Date.now() - startedAt) / 1000);
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    uploadAudio(blob, duration);
+                    if (stream.getTracks) {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                };
+
+                mediaRecorder.start();
+                stopTimer = setTimeout(() => {
+                    if (mediaRecorder && mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                    }
+                }, 30000);
+            } catch (err) {
+                setStatus('Mic access denied. Please allow microphone.');
+                resetRecorder();
+            }
+        }
+
+        async function uploadAudio(blob, duration) {
+            setStatus('Uploading audio note...');
+            const fd = new FormData();
+            fd.append('media', blob, 'audio-note.webm');
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.success && data.urls && data.urls.length > 0) {
+                    state.audioNote = { url: data.urls[0], duration };
+                    renderPreview();
+                    clearBtn.disabled = false;
+                    setStatus('Audio note added.');
+                } else {
+                    setStatus(data.error || 'Upload failed.');
+                }
+            } catch (err) {
+                setStatus('Upload failed. Try again.');
+            } finally {
+                recordBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        }
+
+        function renderPreview() {
+            if (!audioPreview) return;
+            audioPreview.innerHTML = '';
+            if (state.audioNote) {
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = state.audioNote.url;
+                audioPreview.appendChild(audio);
+                const meta = document.createElement('div');
+                meta.className = 'helper-text';
+                meta.textContent = `Duration: ${state.audioNote.duration || 0}s`;
+                audioPreview.appendChild(meta);
+            }
+        }
+
+        recordBtn?.addEventListener('click', startRecording);
+        stopBtn?.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                resetRecorder();
+            }
+        });
+        clearBtn?.addEventListener('click', () => {
+            state.audioNote = null;
+            renderPreview();
+            clearBtn.disabled = true;
+            setStatus('Audio cleared.');
+        });
+
+        window.getPremiumData = function () {
+            updateState();
+            return {
+                revealAt: state.revealAt,
+                passphrase: state.passphrase,
+                audioNote: state.audioNote
+            };
+        };
+    })();
+</script>

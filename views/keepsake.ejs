@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keepsake Card - <%= proposal.recipient_name %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+</head>
+
+<body class="keepsake-page">
+    <%- include('partials/lock', { lockInfo, proposalId: proposal.unique_id }) %>
+    <div class="keepsake-card">
+        <div class="keepsake-header">
+            <div class="keepsake-names">To: <%= proposal.recipient_name %><br>From: <%= proposal.sender_name %></div>
+            <div class="keepsake-meta">
+                <div><strong>Persona:</strong> <%= proposal.persona %></div>
+                <div><strong>Created:</strong> <%= new Date(proposal.created_at).toLocaleDateString() %></div>
+            </div>
+        </div>
+
+        <div class="keepsake-proposal"><%= content.finalProposal || 'Be my Valentine?' %></div>
+
+        <div class="keepsake-section">
+            <h3>Highlights</h3>
+            <% if (proposal.persona === 'fortune') { %>
+                <ul class="keepsake-list">
+                    <% (content.messages || []).slice(0, 4).forEach(m => { %>
+                        <li>🥠 <%= m %></li>
+                    <% }) %>
+                </ul>
+            <% } else if (proposal.persona === 'achievement') { %>
+                <ul class="keepsake-list">
+                    <% (content.achievements || []).slice(0, 4).forEach(a => { %>
+                        <li>🏆 <strong><%= a.title %></strong> — <%= a.desc %></li>
+                    <% }) %>
+                </ul>
+            <% } else if (proposal.persona === 'letter') { %>
+                <p style="white-space: pre-line; line-height: 1.6;"><%= content.letter %></p>
+            <% } %>
+        </div>
+
+        <% if (content.gift) { %>
+            <div class="keepsake-section">
+                <h3>Surprise Details</h3>
+                <% if (content.gift.type === 'surprise') { %>
+                    <p><strong><%= content.gift.title %></strong></p>
+                    <% if (content.gift.description) { %><p><%= content.gift.description %></p><% } %>
+                <% } else if (content.gift.type === 'date') { %>
+                    <% if (content.gift.venue) { %><p>📍 <strong>Venue:</strong> <%= content.gift.venue %></p><% } %>
+                    <% if (content.gift.dateTime) { %><p>⏰ <strong>When:</strong> <%= new Date(content.gift.dateTime).toLocaleString() %></p><% } %>
+                    <% if (content.gift.dressCode) { %><p>👗 <strong>Dress:</strong> <%= content.gift.dressCode %></p><% } %>
+                    <% if (content.gift.notes) { %><p>📝 <strong>Notes:</strong> <%= content.gift.notes %></p><% } %>
+                <% } %>
+                <% if (content.gift.images && content.gift.images.length) { %>
+                    <div class="gift-images">
+                        <% content.gift.images.slice(0,3).forEach(url => { %>
+                            <img src="<%= url %>" alt="Gift image">
+                        <% }) %>
+                    </div>
+                <% } %>
+            </div>
+        <% } %>
+
+        <%- include('partials/audio-note') %>
+
+        <div class="keepsake-print">
+            <button class="btn btn-secondary" onclick="window.print()">Print / Save PDF</button>
+        </div>
+    </div>
+</body>
+
+</html>

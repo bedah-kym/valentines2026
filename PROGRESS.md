@@ -61,4 +61,31 @@
 - All code is complete and server runs successfully
 - Ready for manual testing and deployment
 
----
+## 2026-02-07 - Codex
+### Completed
+- Added sender-facing "How it works" cards on Fortune Cookie and Achievement forms explaining gameplay, unlocks, and premium gating.
+- Styled info cards to match existing aesthetic.
+
+### Next Steps
+- If desired, add similar helper card to Love Letter or the landing dashboard.
+
+### Phase 3: Dashboard & Feedback
+- ✅ "My Proposals" Dashboard:
+  - Tracks sent proposals via LocalStorage
+  - Shows real-time status (Accepted/Rejected/Pending)
+  - Displays recipient notes
+- ✅ Recipient Feedback:
+  - Added ability for recipients to send text notes with their response
+  - Database schema updated (`response_note` column)
+- ✅ API Enhancements:
+  - `POST /respond/:id` now accepts notes
+  - `POST /my-proposals` for batch status retrieval
+- ✅ **Bug Fixes & Polish**:
+  - Restored missing game logic in Achievement/Fortune personas
+  - Added Retro Sound Effects (Web Audio API) to Achievement view
+  - Fixed mobile responsiveness for game UI
+
+### Next Steps
+1. Final end-to-end testing
+2. Deployment
+
