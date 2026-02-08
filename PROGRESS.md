@@ -69,6 +69,16 @@
 ### Next Steps
 - If desired, add similar helper card to Love Letter or the landing dashboard.
 
+## 2026-02-07 - Codex (Premium Payments)
+### Completed
+- Added IntaSend payment fields to schema and migrations.
+- Added payment webhook handler, status polling endpoint, and raw body capture.
+- Added payment unlock UI + polling on success page with dynamic IntaSend link parameters.
+- Premium gating: time capsule/passphrase/audio/keepsake only unlock after payment.
+
+### Next Steps
+- Verify webhook signature/header names against IntaSend docs and set env vars.
+
 ### Phase 3: Dashboard & Feedback
 - ✅ "My Proposals" Dashboard:
   - Tracks sent proposals via LocalStorage
@@ -89,3 +99,58 @@
 1. Final end-to-end testing
 2. Deployment
 
+
+## 2026-02-08 14:21 - Codex
+### Completed
+- Refreshed recipient views (fortune, achievement, letter) with start overlays, clearer instructions, progress HUDs, and faster unlock flow.
+- Added cookie hint pulse, reduced confetti load, and added skip-typing for letters.
+- Fixed recipient response overlays to remove broken icon placeholders and avoid false error popups.
+- Added gift reveal to fortune view and cleaned up lock icon rendering.
+- Added shared CSS for overlays, progress HUDs, and new controls.
+
+### Next Steps
+- Manually test recipient flows on mobile and desktop (fortune, achievement, letter).
+- Verify payment unlock, gift reveal, and audio playback end-to-end.
+
+## 2026-02-08 15:39 - Codex
+### Completed
+- Converted recipient gift/audio icons to HTML entities to avoid mojibake.
+- Cleaned premium copy to plain ASCII and updated spark icon to HTML entity.
+
+### Next Steps
+- Run a manual recipient flow test (fortune, achievement, letter) and verify gift/audio unlock behavior.
+
+## 2026-02-08 16:01 - Codex
+### Completed
+- Added dev-only premium unlock via `PREMIUM_DEV_UNLOCK` for recipient gating and media proxy routes.
+- Documented the new flag in `.env.example`.
+
+### Next Steps
+- Set `PREMIUM_DEV_UNLOCK=1` locally and verify premium audio/gift/keepsake flows.
+
+## 2026-02-08 16:08 - Codex
+### Completed
+- Calmed the Fortune Cookie recipient UI by disabling ambient twinkle animations, softening background patterns, and removing pulsing cookie animation.
+- Reduced confetti intensity and made the copy more warm/romantic without extra motion.
+
+### Next Steps
+- Run a quick local check to confirm the fortune page no longer flickers or spikes CPU.
+
+## 2026-02-08 16:34 - Codex
+### Completed
+- Rebuilt the Fortune recipient experience into a "sweet notes" tray with a central love letter reveal and clearer instructions for unfamiliar audiences.
+- Reduced motion and simplified interactions to avoid flicker/heavy CPU use.
+
+### Next Steps
+- Manually test the Fortune recipient flow for clarity and performance.
+
+## 2026-02-08 16:40 - Codex
+### Completed
+- Rewired Fortune note clicks to use a JS messages array (no inline onclick/data-message), preventing broken HTML when messages contain quotes.
+
+### Next Steps
+- Re-test note opening on the Fortune recipient page.
+
+## 2026-02-08 17:07 - Codex
+### Completed
+- Added a full README with project overview, features, env vars, payments (IntaSend), storage, deployment notes, test plan, and structure.

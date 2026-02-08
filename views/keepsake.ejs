@@ -59,8 +59,8 @@
                 <% } %>
                 <% if (content.gift.images && content.gift.images.length) { %>
                     <div class="gift-images">
-                        <% content.gift.images.slice(0,3).forEach(url => { %>
-                            <img src="<%= url %>" alt="Gift image">
+                        <% content.gift.images.slice(0,3).forEach((url, idx) => { %>
+                            <img src="/media/<%= proposal.unique_id %>/gift/<%= idx %>" alt="Gift image">
                         <% }) %>
                     </div>
                 <% } %>

@@ -21,7 +21,20 @@
             </div>
         </div>
 
-        <a href="/v/${proposal.unique_id}/keepsake" class="btn btn-secondary" target="_blank" rel="noopener">Download Keepsake Card</a>
+        <div class="premium-pay" id="premiumPay">
+            <h3>Premium Unlock (Optional)</h3>
+            <p class="helper-text">All premium features together: time capsule, passphrase lock, audio note, gift surprise, keepsake card.</p>
+            ${paymentStatus === 'paid'
+                ? '<div class="status status-accepted">Premium unlocked</div>'
+                : paymentLink
+                    ? `<a href="${paymentLink}" class="btn btn-primary" target="_blank" rel="noopener">Unlock premium for KES 50 total</a>`
+                    : '<p class="helper-text">Payment link not configured.</p>'}
+            <p class="helper-text" id="paymentStatusText"></p>
+        </div>
+
+        ${paymentStatus === 'paid'
+            ? `<a href="/v/${proposal.unique_id}/keepsake" class="btn btn-secondary" target="_blank" rel="noopener">Download Keepsake Card</a>`
+            : '<div class="helper-text">Keepsake unlocks after payment.</div>'}
 
         <a href="/" class="btn btn-primary">Create Another</a>
     </div>
@@ -37,6 +50,32 @@
             document.execCommand('copy');
             event.target.textContent = 'Copied!';
             setTimeout(() => event.target.textContent = 'Copy', 2000);
+        }
+
+        const paymentStatusText = document.getElementById('paymentStatusText');
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('paid') === '1' && paymentStatusText) {
+            paymentStatusText.textContent = 'Confirming payment...';
+            let attempts = 0;
+            const maxAttempts = 8;
+            const timer = setInterval(async () => {
+                attempts += 1;
+                try {
+                    const res = await fetch('/api/payment-status/${proposal.unique_id}');
+                    const data = await res.json();
+                    if (data.payment_status === 'paid') {
+                        clearInterval(timer);
+                        window.location.href = '/success/${proposal.unique_id}';
+                        return;
+                    }
+                } catch (e) {
+                    // ignore
+                }
+                if (attempts >= maxAttempts) {
+                    clearInterval(timer);
+                    paymentStatusText.textContent = 'Payment pending. We will unlock once confirmed.';
+                }
+            }, 3000);
         }
     </script>
     ` }) %>

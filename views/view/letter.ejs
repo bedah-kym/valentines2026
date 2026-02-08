@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A Letter for <%= proposal.recipient_name %> 💌</title>
-    <meta property="og:title" content="Someone has written you a love letter 💌">
+    <title>A Letter for <%= proposal.recipient_name %></title>
+    <meta property="og:title" content="Someone has written you a love letter">
     <meta property="og:description" content="Break the seal to read a heartfelt message.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -20,7 +20,16 @@
     <div class="letter-scene">
         <div class="desk-bg"></div>
 
-        <!-- Envelope -->
+        <div class="start-overlay" id="letterStart">
+            <div class="start-card">
+                <div class="start-title">A sealed letter for you</div>
+                <p class="start-copy">Tap the seal to open it. You can skip the typing if you want.</p>
+                <div class="start-actions">
+                    <button class="btn btn-primary" id="startLetter">Open letter</button>
+                </div>
+            </div>
+        </div>
+
         <div class="envelope <%= content.sealColor %>-seal" id="envelope" onclick="openEnvelope()">
             <div class="envelope-flap"></div>
             <div class="envelope-body">
@@ -32,14 +41,14 @@
                     <%= proposal.sender_name.charAt(0).toUpperCase() %>
                 </span>
             </div>
-            <p class="envelope-instruction">Click the seal to open</p>
+            <p class="envelope-instruction">Tap the seal to open</p>
         </div>
 
-        <!-- Letter -->
         <div class="letter-paper hidden" id="letterPaper">
             <div class="letter-content">
                 <p class="letter-greeting">Dearest <%= proposal.recipient_name %>,</p>
                 <div class="letter-body" id="letterBody"></div>
+                <button class="btn btn-secondary skip-typing hidden" id="skipTyping">Skip typing</button>
                 <p class="letter-signature">
                     <%= content.signature %>
                 </p>
@@ -54,13 +63,12 @@
                         placeholder="Write a little note back... (optional)"></textarea>
                 </div>
                 <div class="response-buttons">
-                    <button class="btn btn-accept" onclick="respond('accepted')">💕 Yes, I Will</button>
-                    <button class="btn btn-reject" onclick="respond('rejected')">💔 Not This Time</button>
+                    <button class="btn btn-accept" onclick="respond('accepted')">Yes, I will</button>
+                    <button class="btn btn-reject" onclick="respond('rejected')">Not this time</button>
                 </div>
             </div>
         </div>
 
-        <!-- Response Confirmation -->
         <div class="response-overlay hidden" id="responseOverlay">
             <div class="hearts-float"></div>
         </div>
@@ -71,60 +79,109 @@
         <div class="burst-hearts" id="burstHearts"></div>
     </div>
 
-    <!-- Gift Display -->
     <%- include('../partials/gift-display') %>
 
-        <script>
-            const letterText = `<%= content.letter.replace(/\n/g, '<br>').replace(/'/g, "\\'") %>`;
-            const proposalId = '<%= proposal.unique_id %>';
+    <script>
+        const letterText = <%- JSON.stringify(content.letter || '') %>;
+        const proposalId = '<%= proposal.unique_id %>';
+        let typingTimer = null;
+        let typingActive = false;
 
-            function openEnvelope() {
-                // ... (existing code, ensure it matches original) ...
-                const envelope = document.getElementById('envelope');
-                if (envelope.classList.contains('opened')) return;
+        function renderFullLetter() {
+            const container = document.getElementById('letterBody');
+            if (!container) return;
+            container.innerHTML = '';
+            const lines = letterText.split('\n');
+            lines.forEach((line, index) => {
+                if (index > 0) {
+                    container.appendChild(document.createElement('br'));
+                }
+                container.appendChild(document.createTextNode(line));
+            });
+        }
 
-                envelope.classList.add('opening');
+        function typewriterEffect(text) {
+            const container = document.getElementById('letterBody');
+            if (!container) return;
+            container.innerHTML = '';
+
+            let i = 0;
+            const speed = 28;
+            typingActive = true;
+
+            function type() {
+                if (i < text.length) {
+                    const char = text.charAt(i);
+                    if (char === '\n') {
+                        container.appendChild(document.createElement('br'));
+                    } else {
+                        container.appendChild(document.createTextNode(char));
+                    }
+                    i++;
+                    typingTimer = setTimeout(type, speed);
+                } else {
+                    typingActive = false;
+                    hideSkipTyping();
+                }
+            }
+
+            type();
+        }
+
+        function showSkipTyping() {
+            const skipBtn = document.getElementById('skipTyping');
+            if (skipBtn) skipBtn.classList.remove('hidden');
+        }
+
+        function hideSkipTyping() {
+            const skipBtn = document.getElementById('skipTyping');
+            if (skipBtn) skipBtn.classList.add('hidden');
+        }
+
+        function skipTyping() {
+            if (!typingActive) return;
+            if (typingTimer) clearTimeout(typingTimer);
+            typingActive = false;
+            renderFullLetter();
+            hideSkipTyping();
+        }
+
+        function openEnvelope() {
+            const envelope = document.getElementById('envelope');
+            if (envelope.classList.contains('opened')) return;
+
+            envelope.classList.add('opening');
+
+            setTimeout(() => {
+                envelope.classList.add('opened');
+                envelope.classList.add('hidden');
+
+                const paper = document.getElementById('letterPaper');
+                paper.classList.remove('hidden');
+                paper.classList.add('unfolding');
 
                 setTimeout(() => {
-                    envelope.classList.add('opened');
-                    envelope.classList.add('hidden');
+                    showSkipTyping();
+                    typewriterEffect(letterText);
+                }, 800);
+            }, 1200);
+        }
 
-                    const paper = document.getElementById('letterPaper');
-                    paper.classList.remove('hidden');
-                    paper.classList.add('unfolding');
+        function startLetter() {
+            const overlay = document.getElementById('letterStart');
+            overlay?.classList.add('hidden');
+            openEnvelope();
+        }
 
-                    // Typewriter effect for letter
-                    setTimeout(() => {
-                        typewriterEffect(letterText);
-                    }, 800);
-                }, 1200);
+        document.getElementById('startLetter')?.addEventListener('click', startLetter);
+        document.getElementById('letterStart')?.addEventListener('click', (event) => {
+            if (event.target && event.target.id === 'letterStart') {
+                startLetter();
             }
+        });
+        document.getElementById('skipTyping')?.addEventListener('click', skipTyping);
 
-            function typewriterEffect(text) {
-                // ... (existing code) ...
-                const container = document.getElementById('letterBody');
-                container.innerHTML = '';
-
-                let i = 0;
-                const speed = 30; // ms per character
-
-                function type() {
-                    if (i < text.length) {
-                        if (text.substring(i, i + 4) === '<br>') {
-                            container.innerHTML += '<br>';
-                            i += 4;
-                        } else {
-                            container.innerHTML += text.charAt(i);
-                            i++;
-                        }
-                        setTimeout(type, speed);
-                    }
-                }
-
-                type();
-            }
-
-            function showAcceptanceOverlay() {
+        function showAcceptanceOverlay() {
             const overlay = document.getElementById('acceptanceOverlay');
             const burst = document.getElementById('burstHearts');
             if (!overlay || !burst) return;
@@ -132,7 +189,7 @@
             for (let i = 0; i < 20; i++) {
                 const heart = document.createElement('div');
                 heart.className = 'burst-heart';
-                heart.textContent = '❤';
+                heart.innerHTML = '&#10084;';
                 heart.style.left = Math.random() * 100 + '%';
                 heart.style.animationDelay = Math.random() * 0.5 + 's';
                 burst.appendChild(heart);
@@ -144,19 +201,26 @@
         async function respond(status) {
             const note = document.getElementById('responseNote').value;
             try {
-                await fetch('/api/respond/' + proposalId, {
+                const res = await fetch('/api/respond/' + proposalId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status, note })
                 });
+                if (!res.ok) {
+                    throw new Error('Response failed');
+                }
+            } catch (err) {
+                alert('Failed to send response');
+                return;
+            }
 
+            try {
                 const overlay = document.getElementById('responseOverlay');
                 overlay.classList.remove('hidden');
 
                 if (status === 'accepted') {
                     overlay.innerHTML = '<div class="hearts-float"></div><div class="response-confirmation"><h1>&#10084;</h1><p>Your heart has spoken</p></div>';
                     showAcceptanceOverlay();
-                    createFloatingHearts();
 
                     setTimeout(() => {
                         if (typeof showGiftReveal === 'function') {
@@ -164,14 +228,13 @@
                         }
                     }, 3000);
                 } else {
-                    overlay.innerHTML = '<div class="response-confirmation"><h1>??</h1><p>Perhaps another time...</p></div>';
+                    overlay.innerHTML = '<div class="response-confirmation"><h1>&#128148;</h1><p>Perhaps another time...</p></div>';
                 }
             } catch (err) {
-                alert('Failed to send response');
+                console.error('UI update error:', err);
             }
         }
-
-        </script>
+    </script>
 </body>
 
 </html>

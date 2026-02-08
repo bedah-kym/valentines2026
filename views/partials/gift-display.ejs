@@ -1,7 +1,7 @@
-<% if (content.gift) { %>
+﻿<% if (premiumUnlocked && content.gift) { %>
     <div class="gift-reveal hidden" id="giftReveal">
         <% if (content.gift.type==='surprise' ) { %>
-            <h2>🎁 Surprise!</h2>
+            <h2>&#127873; Surprise!</h2>
             <div class="proposal-text" style="font-size: 1.5rem; margin-bottom: 1rem;">
                 <%= content.gift.title %>
             </div>
@@ -13,19 +13,19 @@
 
                     <% if (content.gift.images && content.gift.images.length> 0) { %>
                         <div class="gift-images">
-                            <% content.gift.images.forEach(url=> { %>
-                                <img src="<%= url %>" alt="Gift image">
+                            <% content.gift.images.forEach((url, idx)=> { %>
+                                <img src="/media/<%= proposal.unique_id %>/gift/<%= idx %>" alt="Gift image">
                                 <% }) %>
                         </div>
                         <% } %>
 
                             <% } else if (content.gift.type==='date' ) { %>
-                                <h2>📅 Date Night Plans</h2>
+                                <h2>&#128197; Date Night Plans</h2>
 
                                 <div class="date-details">
                                     <% if (content.gift.venue) { %>
                                         <div class="date-detail-row">
-                                            <span class="icon">📍</span>
+                                            <span class="icon">&#128205;</span>
                                             <div>
                                                 <div class="label">Venue</div>
                                                 <div class="value">
@@ -37,7 +37,7 @@
 
                                             <% if (content.gift.dateTime) { %>
                                                 <div class="date-detail-row">
-                                                    <span class="icon">🕐</span>
+                                                    <span class="icon">&#128336;</span>
                                                     <div>
                                                         <div class="label">When</div>
                                                         <div class="value">
@@ -49,7 +49,7 @@
 
                                                     <% if (content.gift.dressCode) { %>
                                                         <div class="date-detail-row">
-                                                            <span class="icon">👗</span>
+                                                            <span class="icon">&#128087;</span>
                                                             <div>
                                                                 <div class="label">Dress Code</div>
                                                                 <div class="value">
@@ -61,7 +61,7 @@
 
                                                             <% if (content.gift.notes) { %>
                                                                 <div class="date-detail-row">
-                                                                    <span class="icon">💭</span>
+                                                                    <span class="icon">&#128173;</span>
                                                                     <div>
                                                                         <div class="label">Note</div>
                                                                         <div class="value">
@@ -74,15 +74,15 @@
 
                                 <% if (content.gift.images && content.gift.images.length> 0) { %>
                                     <div class="gift-images">
-                                        <% content.gift.images.forEach(url=> { %>
-                                            <img src="<%= url %>" alt="Venue image">
+                                        <% content.gift.images.forEach((url, idx)=> { %>
+                                            <img src="/media/<%= proposal.unique_id %>/gift/<%= idx %>" alt="Venue image">
                                             <% }) %>
                                     </div>
                                     <% } %>
                                         <% } %>
 
                                             <button class="btn btn-primary" onclick="closeGiftReveal()"
-                                                style="margin-top: 1.5rem; width: 100%;">Okay, I love it! ❤️</button>
+                                                style="margin-top: 1.5rem; width: 100%;">Okay, I love it! &#10084;</button>
     </div>
 
     <script>

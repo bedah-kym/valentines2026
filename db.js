@@ -19,6 +19,11 @@ db.exec(`
     content TEXT NOT NULL,
     reveal_at DATETIME,
     passphrase_hash TEXT,
+    passphrase_salt TEXT,
+    payment_status TEXT,
+    paid_at DATETIME,
+    payment_reference TEXT,
+    payment_provider TEXT,
     status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
     response_note TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -48,6 +53,36 @@ try {
     db.exec('ALTER TABLE proposals ADD COLUMN passphrase_hash TEXT');
     console.log('Migrated: Added passphrase_hash column');
   }
+
+  const hasPassphraseSalt = tableInfo.some(col => col.name === 'passphrase_salt');
+  if (!hasPassphraseSalt) {
+    db.exec('ALTER TABLE proposals ADD COLUMN passphrase_salt TEXT');
+    console.log('Migrated: Added passphrase_salt column');
+  }
+
+  const hasPaymentStatus = tableInfo.some(col => col.name === 'payment_status');
+  if (!hasPaymentStatus) {
+    db.exec('ALTER TABLE proposals ADD COLUMN payment_status TEXT');
+    console.log('Migrated: Added payment_status column');
+  }
+
+  const hasPaidAt = tableInfo.some(col => col.name === 'paid_at');
+  if (!hasPaidAt) {
+    db.exec('ALTER TABLE proposals ADD COLUMN paid_at DATETIME');
+    console.log('Migrated: Added paid_at column');
+  }
+
+  const hasPaymentRef = tableInfo.some(col => col.name === 'payment_reference');
+  if (!hasPaymentRef) {
+    db.exec('ALTER TABLE proposals ADD COLUMN payment_reference TEXT');
+    console.log('Migrated: Added payment_reference column');
+  }
+
+  const hasPaymentProvider = tableInfo.some(col => col.name === 'payment_provider');
+  if (!hasPaymentProvider) {
+    db.exec('ALTER TABLE proposals ADD COLUMN payment_provider TEXT');
+    console.log('Migrated: Added payment_provider column');
+  }
 } catch (err) {
   console.error('Migration error:', err);
 }
@@ -55,8 +90,8 @@ try {
 // Query helpers
 const queries = {
   create: db.prepare(`
-    INSERT INTO proposals (unique_id, persona, sender_name, recipient_name, content, reveal_at, passphrase_hash)
-    VALUES (@unique_id, @persona, @sender_name, @recipient_name, @content, @reveal_at, @passphrase_hash)
+    INSERT INTO proposals (unique_id, persona, sender_name, recipient_name, content, reveal_at, passphrase_hash, passphrase_salt)
+    VALUES (@unique_id, @persona, @sender_name, @recipient_name, @content, @reveal_at, @passphrase_hash, @passphrase_salt)
   `),
 
   getByUniqueId: db.prepare(`
@@ -69,6 +104,12 @@ const queries = {
 
   markViewed: db.prepare(`
     UPDATE proposals SET viewed_at = CURRENT_TIMESTAMP WHERE unique_id = ? AND viewed_at IS NULL
+  `),
+
+  updatePayment: db.prepare(`
+    UPDATE proposals
+    SET payment_status = ?, paid_at = ?, payment_reference = ?, payment_provider = ?
+    WHERE unique_id = ?
   `)
 };
 

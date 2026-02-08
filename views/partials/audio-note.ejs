@@ -1,12 +1,12 @@
-<% if (content && content.premium && content.premium.audioNote) { %>
+﻿<% if (premiumUnlocked && content && content.premium && content.premium.audioNote) { %>
 <div class="audio-note">
     <div class="audio-note-head">
-        <span class="audio-icon">🎧</span>
+        <span class="audio-icon">&#127911;</span>
         <div>
             <div class="eyebrow">Candlelight audio note</div>
             <p class="helper-text"><%= content.premium.audioNote.duration ? content.premium.audioNote.duration + 's' : '' %></p>
         </div>
     </div>
-    <audio controls src="<%= content.premium.audioNote.url %>"></audio>
+    <audio controls src="/media/<%= proposal.unique_id %>/audio"></audio>
 </div>
 <% } %>

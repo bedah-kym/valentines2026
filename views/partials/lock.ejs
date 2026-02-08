@@ -1,7 +1,7 @@
-<% if (lockInfo && lockInfo.locked) { %>
+﻿<% if (lockInfo && lockInfo.locked) { %>
 <div class="lock-overlay" id="lockOverlay">
     <div class="lock-card">
-        <div class="lock-icon">🔒</div>
+        <div class="lock-icon">&#128274;</div>
         <h2><%= lockInfo.reason === 'time' ? 'Time Capsule' : 'Secret Passphrase' %></h2>
         <% if (lockInfo.reason === 'time' && lockInfo.unlockAt) { %>
             <p class="helper-text">Opens at <strong><%= new Date(lockInfo.unlockAt).toLocaleString() %></strong></p>

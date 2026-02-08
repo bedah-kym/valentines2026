@@ -36,8 +36,16 @@ router.post('/create', async (req, res) => {
         }
 
         let passphraseHash = null;
+        let passphraseSalt = null;
         if (passphrase && String(passphrase).trim()) {
-            passphraseHash = crypto.createHash('sha256').update(String(passphrase).trim()).digest('hex');
+            passphraseSalt = crypto.randomBytes(16).toString('hex');
+            passphraseHash = crypto.pbkdf2Sync(
+                String(passphrase).trim(),
+                passphraseSalt,
+                120000,
+                32,
+                'sha256'
+            ).toString('hex');
         }
 
         queries.create.run({
@@ -47,7 +55,8 @@ router.post('/create', async (req, res) => {
             recipient_name: recipient_name.trim(),
             content: typeof content === 'string' ? content : JSON.stringify(content),
             reveal_at: revealAt,
-            passphrase_hash: passphraseHash
+            passphrase_hash: passphraseHash,
+            passphrase_salt: passphraseSalt
         });
 
         res.json({
@@ -109,9 +118,24 @@ router.post('/unlock/:id', (req, res) => {
             if (!passphrase || typeof passphrase !== 'string') {
                 return res.status(400).json({ error: 'Passphrase required' });
             }
-            const hashed = crypto.createHash('sha256').update(passphrase.trim()).digest('hex');
-            if (hashed !== proposal.passphrase_hash) {
-                return res.status(401).json({ error: 'Incorrect passphrase' });
+            const trimmed = passphrase.trim();
+            if (proposal.passphrase_salt) {
+                const hashed = crypto.pbkdf2Sync(
+                    trimmed,
+                    proposal.passphrase_salt,
+                    120000,
+                    32,
+                    'sha256'
+                ).toString('hex');
+                if (hashed !== proposal.passphrase_hash) {
+                    return res.status(401).json({ error: 'Incorrect passphrase' });
+                }
+            } else {
+                // Legacy SHA-256 for existing records without salt.
+                const hashed = crypto.createHash('sha256').update(trimmed).digest('hex');
+                if (hashed !== proposal.passphrase_hash) {
+                    return res.status(401).json({ error: 'Incorrect passphrase' });
+                }
             }
         }
 
@@ -157,7 +181,8 @@ router.post('/my-proposals', (req, res) => {
                     response_note: proposal.response_note, // Include the note!
                     viewed_at: proposal.viewed_at,
                     created_at: proposal.created_at,
-                    reveal_at: proposal.reveal_at
+                    reveal_at: proposal.reveal_at,
+                    payment_status: proposal.payment_status
                 });
             }
         }
@@ -257,6 +282,136 @@ router.get('/config', (req, res) => {
     res.json({
         imageUploads: isStorageConfigured()
     });
+});
+
+function extractReference(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload.reference ||
+        payload.client_reference ||
+        payload.invoice_id ||
+        (payload.data && (payload.data.reference || payload.data.client_reference || payload.data.invoice_id)) ||
+        null;
+}
+
+function extractStatus(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload.status ||
+        payload.state ||
+        payload.payment_status ||
+        (payload.data && (payload.data.status || payload.data.state || payload.data.payment_status)) ||
+        null;
+}
+
+function extractAmount(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload.value ||
+        payload.amount ||
+        payload.net_amount ||
+        (payload.data && (payload.data.value || payload.data.amount || payload.data.net_amount)) ||
+        null;
+}
+
+function extractCurrency(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload.currency ||
+        (payload.data && payload.data.currency) ||
+        null;
+}
+
+function extractApiRef(payload) {
+    if (!payload || typeof payload !== 'object') return null;
+    return payload.api_ref ||
+        (payload.data && payload.data.api_ref) ||
+        null;
+}
+
+// Payment webhook (IntaSend)
+router.post('/payment-webhook', (req, res) => {
+    try {
+        const expectedChallenge = process.env.INTASEND_WEBHOOK_CHALLENGE;
+        if (!expectedChallenge) {
+            return res.status(500).json({ error: 'Webhook challenge not configured' });
+        }
+        const challenge = req.body && (req.body.challenge || req.body.webhook_challenge);
+        if (!challenge || String(challenge) !== String(expectedChallenge)) {
+            return res.status(401).json({ error: 'Invalid challenge' });
+        }
+
+        const reference = extractReference(req.body);
+        const status = extractStatus(req.body);
+        if (!reference) {
+            return res.status(400).json({ error: 'Missing payment reference' });
+        }
+
+        const expectedAmount = process.env.INTASEND_EXPECTED_AMOUNT;
+        const expectedCurrency = process.env.INTASEND_EXPECTED_CURRENCY || 'KES';
+        const expectedApiRef = process.env.INTASEND_EXPECTED_API_REF;
+
+        const amount = extractAmount(req.body);
+        const currency = extractCurrency(req.body);
+        const apiRef = extractApiRef(req.body);
+
+        if (expectedAmount) {
+            if (!amount) {
+                return res.status(400).json({ error: 'Missing amount' });
+            }
+            if (String(amount) !== String(expectedAmount)) {
+                return res.status(400).json({ error: 'Amount mismatch' });
+            }
+        }
+        if (expectedCurrency) {
+            if (!currency) {
+                return res.status(400).json({ error: 'Missing currency' });
+            }
+            if (String(currency).toUpperCase() !== String(expectedCurrency).toUpperCase()) {
+                return res.status(400).json({ error: 'Currency mismatch' });
+            }
+        }
+        if (expectedApiRef) {
+            if (!apiRef) {
+                return res.status(400).json({ error: 'Missing api_ref' });
+            }
+            if (String(apiRef) !== String(expectedApiRef)) {
+                return res.status(400).json({ error: 'Payment link mismatch' });
+            }
+        }
+
+        const normalizedStatus = String(status || '').toLowerCase();
+        const isPaid = ['paid', 'success', 'successful', 'complete', 'completed'].includes(normalizedStatus);
+        const paymentStatus = isPaid ? 'paid' : (normalizedStatus || 'pending');
+        const paidAt = isPaid ? new Date().toISOString() : null;
+
+        queries.updatePayment.run(
+            paymentStatus,
+            paidAt,
+            req.body.invoice_id || req.body.id || reference,
+            req.body.provider || 'intasend',
+            reference
+        );
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Payment webhook error:', error);
+        res.status(500).json({ error: 'Webhook processing failed' });
+    }
+});
+
+// Payment status (polling)
+router.get('/payment-status/:id', (req, res) => {
+    try {
+        const { id } = req.params;
+        const proposal = queries.getByUniqueId.get(id);
+        if (!proposal) {
+            return res.status(404).json({ error: 'Proposal not found' });
+        }
+        res.json({
+            payment_status: proposal.payment_status || 'pending',
+            paid_at: proposal.paid_at || null
+        });
+    } catch (error) {
+        console.error('Payment status error:', error);
+        res.status(500).json({ error: 'Failed to fetch payment status' });
+    }
 });
 
 module.exports = router;
