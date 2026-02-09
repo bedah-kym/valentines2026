@@ -166,3 +166,10 @@
 
 ### Next Steps
 - Set DB_PATH=/app/data/database.sqlite in Railway and redeploy to persist data.
+
+## 2026-02-09 21:23 - Codex
+### Completed
+- Relaxed IntaSend webhook amount check to allow amounts >= expected (to handle fees); added numeric parsing helper.
+
+### Next Steps
+- Redeploy and retest payment; if webhook still fails, grab the webhook payload fields (reference, amount, currency) from HTTP logs.

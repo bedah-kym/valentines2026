@@ -325,6 +325,12 @@ function extractApiRef(payload) {
         null;
 }
 
+function asNumber(val) {
+    if (val === null || val === undefined) return null;
+    const num = Number(val);
+    return Number.isFinite(num) ? num : null;
+}
+
 // Payment webhook (IntaSend)
 router.post('/payment-webhook', (req, res) => {
     try {
@@ -343,19 +349,20 @@ router.post('/payment-webhook', (req, res) => {
             return res.status(400).json({ error: 'Missing payment reference' });
         }
 
-        const expectedAmount = process.env.INTASEND_EXPECTED_AMOUNT;
+        const expectedAmount = asNumber(process.env.INTASEND_EXPECTED_AMOUNT);
         const expectedCurrency = process.env.INTASEND_EXPECTED_CURRENCY || 'KES';
         const expectedApiRef = process.env.INTASEND_EXPECTED_API_REF;
 
-        const amount = extractAmount(req.body);
+        const amount = asNumber(extractAmount(req.body));
         const currency = extractCurrency(req.body);
         const apiRef = extractApiRef(req.body);
 
-        if (expectedAmount) {
-            if (!amount) {
+        if (expectedAmount !== null) {
+            if (amount === null) {
                 return res.status(400).json({ error: 'Missing amount' });
             }
-            if (String(amount) !== String(expectedAmount)) {
+            // Allow for gateway fees (treat amount >= expected as acceptable)
+            if (amount + 0.0001 < expectedAmount) {
                 return res.status(400).json({ error: 'Amount mismatch' });
             }
         }
