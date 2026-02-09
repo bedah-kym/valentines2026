@@ -1799,6 +1799,92 @@ h3 {
   .letter-paper {
     padding: 2rem 1.5rem;
   }
+
+  /* View pages */
+  .fortune-scene,
+  .achievement-view .game-ui,
+  .letter-scene {
+    padding: 1.25rem;
+  }
+
+  .fortune-board {
+    padding: 1.25rem;
+    gap: 1rem;
+  }
+
+  .note-row {
+    gap: 0.75rem;
+  }
+
+  .note-token {
+    min-width: 120px;
+    padding: 0.85rem 1rem;
+  }
+
+  .letter-center {
+    width: 100%;
+    max-width: 320px;
+  }
+
+  .progress-hud {
+    display: block;
+    width: 100%;
+    text-align: center;
+  }
+
+  .view-header {
+    padding: 0 0.5rem;
+  }
+
+  .proposal-card,
+  .legendary-card,
+  .fortune-card,
+  .letter-paper {
+    padding: 1.5rem;
+  }
+
+  .proposal-card h1,
+  .legendary-card h1 {
+    font-size: 1.6rem;
+  }
+
+  .response-buttons {
+    flex-direction: column;
+  }
+
+  /* Create forms */
+  .premium-section,
+  .gift-section,
+  .card-block {
+    padding: 1rem 1.1rem;
+  }
+}
+
+@media (max-width: 400px) {
+  html {
+    font-size: 13px;
+  }
+
+  .fortune-board {
+    padding: 1rem;
+  }
+
+  .note-row {
+    gap: 0.6rem;
+  }
+
+  .note-token {
+    min-width: 110px;
+    padding: 0.75rem 0.9rem;
+  }
+
+  .letter-center {
+    padding: 1.5rem 1.2rem;
+  }
+
+  .progress-hud {
+    font-size: 0.8rem;
+  }
 }
 
 /* ===================================

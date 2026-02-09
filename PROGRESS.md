@@ -154,3 +154,7 @@
 ## 2026-02-08 17:07 - Codex
 ### Completed
 - Added a full README with project overview, features, env vars, payments (IntaSend), storage, deployment notes, test plan, and structure.
+
+## 2026-02-08 17:15 - Codex
+### Completed
+- Mobile polish: tightened padding/gaps, reduced min widths, and stacked controls for small screens across view pages and premium/gift sections. Added extra media queries (<=600px, <=400px) to keep layouts readable and tappable.
