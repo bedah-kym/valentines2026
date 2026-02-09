@@ -1,8 +1,8 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 
-// Initialize database
-const dbPath = path.join(__dirname, 'db', 'database.sqlite');
+// Initialize database (allow override for deployments with mounted volumes)
+const dbPath = process.env.DB_PATH || path.join(__dirname, 'db', 'database.sqlite');
 const db = new Database(dbPath);
 
 // Enable WAL mode for better performance

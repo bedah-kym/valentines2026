@@ -158,3 +158,11 @@
 ## 2026-02-08 17:15 - Codex
 ### Completed
 - Mobile polish: tightened padding/gaps, reduced min widths, and stacked controls for small screens across view pages and premium/gift sections. Added extra media queries (<=600px, <=400px) to keep layouts readable and tappable.
+
+## 2026-02-09 19:31 - Codex
+### Completed
+- Added DB_PATH support in db.js so SQLite can live on a mounted volume (e.g., /app/data on Railway).
+- Documented DB_PATH in README for deployment.
+
+### Next Steps
+- Set DB_PATH=/app/data/database.sqlite in Railway and redeploy to persist data.

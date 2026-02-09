@@ -30,6 +30,7 @@ App runs at `http://localhost:3000`.
 
 ## Env Vars
 - Core: `PORT`, `NODE_ENV`
+- Database: `DB_PATH` (e.g., `/app/data/database.sqlite` for Railway volume)
 - Premium dev flag: `PREMIUM_DEV_UNLOCK` (set to `1` only in non-production to bypass payment gating)
 - IntaSend: `INTASEND_PAYMENT_LINK`, `INTASEND_WEBHOOK_CHALLENGE`, `INTASEND_EXPECTED_AMOUNT=50`, `INTASEND_EXPECTED_CURRENCY=KES`, `INTASEND_EXPECTED_API_REF`
 - Storage (R2/S3): access key, secret, bucket, region/endpoint as per your provider
